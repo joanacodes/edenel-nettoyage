@@ -5,7 +5,7 @@
 
 # ⚠ En production, le workflow GitHub Actions remplace automatiquement
 # cette valeur par l'URL de vos GitHub Pages (ou de votre domaine).
-baseURL = "https://VOTRE-UTILISATEUR.github.io/edenel-nettoyage/"
+baseURL = "https://joanacodes.github.io/edenel-nettoyage/"
 
 title = "EDENEL NETTOYAGE PROFESSIONNEL"
 locale = "fr-FR"

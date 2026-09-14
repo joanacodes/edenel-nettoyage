@@ -1,0 +1,31 @@
+{{ define "main" }}
+<div class="page-entete">
+  <div class="wrap">
+    {{ partial "ariane.html" . }}
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.chapo | default .Description }}<p class="chapo">{{ . | safeHTML }}</p>{{ end }}
+  </div>
+</div>
+<div class="page-corps">
+  <div class="wrap">
+    {{ with .Content }}<div class="prose">{{ . }}</div>{{ end }}
+    <div class="grille-cartes auto">
+      {{ range .RegularPages.ByWeight }}
+      <a class="presta presta-lien" href="{{ .RelPermalink }}">
+        <div class="ico">{{ partial "icone.html" .Params.icone }}</div>
+        <h3>{{ .Title }}</h3>
+        <p>{{ .Params.resume | default .Description }}</p>
+        <span class="lire">Découvrir la prestation</span>
+      </a>
+      {{ end }}
+    </div>
+    <div class="cta-article espace-haut-l">
+      <div>
+        <h2>Simulez votre devis en deux minutes</h2>
+        <p>Tarifs HT transparents, devis PDF par email, réservation 7j/7 à Paris, dans le Val-de-Marne et en Île-de-France.</p>
+      </div>
+      <button class="btn btn-vert" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+    </div>
+  </div>
+</div>
+{{ end }}

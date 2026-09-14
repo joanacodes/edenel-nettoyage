@@ -1,0 +1,174 @@
+{{ define "main" }}
+{{- $t := hugo.Data.tarifs -}}
+{{- $nbCol := len $t.prestations -}}
+<div class="page-entete">
+  <div class="wrap">
+    {{ partial "ariane.html" . }}
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.chapo | default .Description }}<p class="chapo">{{ . | safeHTML }}</p>{{ end }}
+  </div>
+</div>
+<div class="page-corps">
+  <div class="wrap">
+    <div class="prose">{{ .Content }}</div>
+
+    <div class="tarifs-intro">
+      <div class="carte">
+        <h3>Taux horaire de base</h3>
+        <p class="gros">{{ $t.base }} €<small> HT / heure</small></p>
+        <p>Intervention planifiée 4 jours ou plus à l'avance. Tous les tarifs de cette page s'entendent hors taxes ; la TVA de 20 % est ajoutée au total. Grille mise à jour le {{ $t.miseAJour }}.</p>
+      </div>
+      <div class="carte">
+        <h3>Tarif Fidélité : −8 % à vie</h3>
+        <p>Acquis dès la 5ᵉ commande ou dès 400 € TTC de commandes cumulées, sur présentation de votre numéro client (créé automatiquement avec votre compte Espace client). La remise est appliquée immédiatement puis vérifiée dans notre référentiel.</p>
+        <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Simuler mon devis</button>
+      </div>
+    </div>
+
+    <!-- 1 · Tarifs horaires -->
+    <div class="bloc-tarif" id="tarifs-horaires">
+      <h2>1 · Tarifs horaires HT selon le délai de réservation</h2>
+      <p class="sous">Commande ponctuelle, non récurrente. Le taux horaire s'applique à toutes les prestations (ménage, linge, repassage, vitres…) ; le ménage fin de chantier est majoré de {{ $t.supplementChantier }} €/h.</p>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Délai de réservation</th><th>Toutes prestations</th><th>Ménage fin de chantier<br><span class="unite">(+{{ $t.supplementChantier }} €/h)</span></th><th>Autre prestation</th></tr></thead>
+          <tbody>
+            {{ range $t.delais }}
+            <tr>
+              <td class="txt"><strong>{{ .code }}</strong> — {{ .label }}</td>
+              <td class="fort">{{ lang.FormatCurrency 2 "EUR" (mul $t.base .coef) }} <span class="unite">HT/h</span></td>
+              <td>{{ lang.FormatCurrency 2 "EUR" (add (mul $t.base .coef) $t.supplementChantier) }} <span class="unite">HT/h</span></td>
+              <td>Contactez-nous</td>
+            </tr>
+            {{ end }}
+            <tr><td class="txt">Dimanche et jours fériés</td><td class="fort" colspan="3">Majoration de {{ lang.FormatPercent 0 (mul $t.majorationDimanche 100) }} sur la prestation</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2 · Heures minimum -->
+    <div class="bloc-tarif" id="heures-minimum">
+      <h2>2 · Temps passé — nombre d'heures minimum à commander</h2>
+      <p class="sous">Par type de logement et par prestation. La durée minimum d'une intervention est de 1 heure, à laquelle s'ajoutent systématiquement les frais de déplacement de {{ $t.deplacement }} € HT par commande.</p>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Type de logement</th>{{ range $t.prestations }}<th>{{ .nom }}{{ with .note }} <sup>{{ . }}</sup>{{ end }}</th>{{ end }}</tr></thead>
+          <tbody>
+            {{ range $i, $l := $t.logements }}
+            <tr><td>{{ $l }}</td>{{ range index $t.heuresMin $i }}<td>{{ lang.FormatNumber 2 . }} h</td>{{ end }}</tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3 · Tarif public -->
+    <div class="bloc-tarif" id="tarif-public">
+      <h2>3 · Tarif Public HT — forfaits au tarif planifié</h2>
+      <p class="sous">Montants au tarif planifié (délai a) × heures minimum, hors frais de déplacement et suppléments. Pour une réservation en dernière minute, appliquez le coefficient du tableau 1.</p>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Type de logement</th>{{ range $t.prestations }}<th>{{ .nom }}{{ with .note }} <sup>{{ . }}</sup>{{ end }}</th>{{ end }}</tr></thead>
+          <tbody>
+            {{ range $i, $l := $t.logements }}
+            <tr><td>{{ $l }}</td>
+              {{ range $j, $h := index $t.heuresMin $i }}{{ $p := index $t.prestations $j }}{{ $taux := $t.base }}{{ if $p.chantier }}{{ $taux = add $t.base $t.supplementChantier }}{{ end }}<td class="fort">{{ lang.FormatCurrency 2 "EUR" (mul $taux $h) }}</td>{{ end }}
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 4 · Tarif fidélité -->
+    <div class="bloc-tarif" id="tarif-fidelite">
+      <h2>4 · Tarif Fidélité HT (−8 %)</h2>
+      <p class="sous">Acquis dès la 5ᵉ commande ou dès 400 € TTC de commandes cumulées, sur présentation du numéro client. Mêmes bases de calcul que le Tarif Public.</p>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Type de logement</th>{{ range $t.prestations }}<th>{{ .nom }}{{ with .note }} <sup>{{ . }}</sup>{{ end }}</th>{{ end }}</tr></thead>
+          <tbody>
+            {{ range $i, $l := $t.logements }}
+            <tr><td>{{ $l }}</td>
+              {{ range $j, $h := index $t.heuresMin $i }}{{ $p := index $t.prestations $j }}{{ $taux := $t.base }}{{ if $p.chantier }}{{ $taux = add $t.base $t.supplementChantier }}{{ end }}<td class="fort">{{ lang.FormatCurrency 2 "EUR" (mul (mul $taux $h) (sub 1 $t.remiseFidelite)) }}</td>{{ end }}
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 5 · Suppléments -->
+    <div class="bloc-tarif" id="supplements">
+      <h2>5 · Suppléments — par commande ou par prestation</h2>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Supplément</th><th>Montant HT</th></tr></thead>
+          <tbody>
+            <tr><td class="txt"><strong>Obligatoire</strong> — Frais de déplacement, quel que soit le nombre d'heures <sup>8</sup></td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.deplacement }} / commande</td></tr>
+            <tr><td class="txt"><strong>Obligatoire avec toute prestation de linge</strong> — Frais de laverie (coût des machines lavage-séchage) <sup>6</sup></td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.laverieParLit }} / lit × nombre de lits</td></tr>
+            <tr><td class="txt"><strong>Obligatoire avec toute prestation de ménage</strong> — Avance produits d'entretien (nettoyant, anti-calcaire, liquide vaisselle, dégraissant, sacs poubelle, éponges…) <sup>9</sup>. Non facturée si les produits sont déjà achetés et livrés dans le logement.</td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.produitsEntretien }} / prestation</td></tr>
+            <tr><td class="txt"><strong>Optionnel</strong> — Produits de toilette &amp; consommables : épicerie, café, essuie-tout, papier toilette, lave-main, désodorisant <sup>9</sup></td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.produitsToilette }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="alerte">⚠ <strong>Rappel important</strong> — En l'absence des produits de nettoyage obligatoires, le ménage sera reporté et de nouveaux frais de déplacement seront facturés. Le ménage n'est réalisé que si les produits d'entretien sont commandés (avance ci-dessus) ou déjà achetés et livrés dans le logement par le donneur d'ordre (à préciser en commentaire de commande).</div>
+      <div class="notes-tarifs">
+        <ol>
+          {{ range $t.notes }}<li>{{ . }}</li>
+          {{ end }}
+        </ol>
+      </div>
+    </div>
+
+    <!-- 6 · Bureaux -->
+    <div class="bloc-tarif" id="bureaux">
+      <h2>6 · Nettoyage de bureaux</h2>
+      <p class="sous">Standard hôtelier, checklist signée et photos à chaque passage. Contrats mensuels dégressifs selon la surface et la fréquence ; consommables sanitaires en option.</p>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Prestation</th><th>Unité</th><th>Prix HT</th></tr></thead>
+          <tbody>
+            {{ range $t.bureaux.ponctuel }}
+            <tr><td class="txt"><strong>{{ .nom }}</strong> — {{ .note }}</td><td>€ / h{{ if eq .nom "Nettoyage de bureaux" }} — min. {{ $t.bureaux.minHeures }} h{{ end }}</td><td class="fort">{{ lang.FormatCurrency 2 "EUR" .taux }} / h</td></tr>
+            {{ end }}
+            {{ range $t.bureaux.contrat }}
+            <tr><td class="txt"><strong>Entretien régulier — {{ .libelle }}</strong> ({{ .frequence }})</td><td>€ / m² / mois</td><td class="fort">{{ lang.FormatCurrency 2 "EUR" .prix }} / m² / mois</td></tr>
+            {{ end }}
+            <tr><td class="txt"><strong>Entretien régulier — plateaux de plus de 300 m²</strong> (visite sur site préalable indispensable)</td><td>€ / m² / mois</td><td class="fort">Sur devis <span class="unite">(base {{ lang.FormatCurrency 2 "EUR" $t.bureaux.baseGrand }} / m²)</span></td></tr>
+            <tr><td class="txt"><strong>Remise contrat annuel</strong></td><td>% du forfait</td><td class="fort">−{{ lang.FormatPercent 0 (mul $t.bureaux.remiseAnnuelle 100) }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 7 · Copropriétés -->
+    <div class="bloc-tarif" id="coproprietes">
+      <h2>7 · Entretien des copropriétés</h2>
+      <p class="sous">Forfaits mensuels pour syndics et conseils syndicaux, avec passages tracés (checklist signée, photos en ligne) et remplacement d'intervenant garanti. Contrat sur devis après visite gratuite de l'immeuble.</p>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Prestation</th><th>Unité</th><th>Prix HT</th></tr></thead>
+          <tbody>
+            {{ range $t.copro.tailles }}{{ if gt .prix 0 }}
+            <tr><td class="txt"><strong>{{ .nom }}</strong>{{ with .detail }} — {{ . }}{{ end }}</td><td>Forfait € / mois</td><td class="fort">{{ lang.FormatCurrency 2 "EUR" .prix }} / mois</td></tr>
+            {{ end }}{{ end }}
+            <tr><td class="txt"><strong>Sortie / rentrée et désinfection des containers</strong> — selon nombre de containers et jours de collecte</td><td>Forfait € / mois</td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.copro.containers }} / mois</td></tr>
+            <tr><td class="txt"><strong>Vitrerie des parties communes</strong> — recommandé au trimestre</td><td>€ / intervention</td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.copro.vitrerie }}</td></tr>
+            <tr><td class="txt"><strong>Remise contrat annuel</strong> (copropriétés et bureaux)</td><td>% du forfait</td><td class="fort">−{{ lang.FormatPercent 0 (mul $t.copro.remiseAnnuelle 100) }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="cta-article espace-haut-l">
+      <div>
+        <h2>Simulez votre devis en deux minutes</h2>
+        <p>Le simulateur applique automatiquement cette grille : délai de réservation, heures minimum, suppléments, majoration dimanche, Tarif Fidélité.</p>
+      </div>
+      <button class="btn btn-vert" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+    </div>
+  </div>
+</div>
+{{ end }}

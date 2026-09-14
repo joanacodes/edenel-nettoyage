@@ -1,0 +1,175 @@
+# =====================================================================
+#  CONTENU DE LA PAGE D'ACCUEIL
+#  Le HTML léger (<strong>, <br>, &nbsp;) est autorisé dans les champs.
+# =====================================================================
+
+hero:
+  eyebrow: "Société de ménage Sélect — Airbnb/Booking &amp; Hôtels"
+  titre: 'Des logements <span class="souligne">impeccables</span>,<br>des voyageurs 5&nbsp;étoiles.'
+  accroche: "EDENEL NETTOYAGE PRO entretient vos locations Airbnb, Booking, Hôtels et vos hébergements d'affaires aux normes de l'hôtellerie — entre chaque check-out et chaque check-in, 7j/7, à Paris, dans le Val-de-Marne et dans toute l'Île-de-France. <strong>Nous entretenons aussi vos Copropriétés et vos Bureaux, avec la même exigence.</strong>"
+  ctaPrincipal: "Combien ça coûte ?"
+  ctaSecondaire: "Découvrir nos prestations"
+  note: "Réservation planifiée ou dernière minute · assurance RC professionnelle incluse"
+  checklist:
+    titre: "Checklist qualité — T2 · rotation Airbnb"
+    items:
+      - "Ménage complet : cuisine, salle de bain, sols, surfaces"
+      - "Linge changé — lit fait « qualité hôtel »"
+      - "Consommables réassortis (savon, papier, café)"
+      - "Mise en scène du logement à l'identique"
+  notif:
+    titre: "Compte-rendu photos envoyé ✓"
+    texte: "Intervention terminée à 14 h 47 — logement prêt pour le check-in de 16 h."
+  achats:
+    titre: "Accès en temps réel aux justificatifs d'achats"
+    texte: "Vous accédez en temps réel aux tickets de caisse ou reçus des achats de produits, café, épicerie, …"
+
+garanties:
+  - icone: horloge
+    titre: "7j/7"
+    texte: "Week-ends &amp; jours fériés inclus"
+  - icone: bouclier
+    titre: "Assurance RC pro"
+    texte: "Vous êtes couvert en toute circonstance"
+  - icone: photo
+    titre: "Compte-rendu photos"
+    texte: "Après chaque passage, même à distance"
+  - icone: epingle
+    titre: "Paris · 94 · IDF"
+    texte: "Toute l'Île-de-France"
+
+experience:
+  eyebrow: "Expertise"
+  titre: "Notre solide expérience est acquise là où l'exigence est la plus forte !"
+  chiffres:
+    - valeur: "10+ ans"
+      texte: "d'expérience de terrain dans l'hébergement premium"
+    - valeur: "Standards hôteliers"
+      texte: "appliqués à chaque intervention, sans exception"
+    - valeur: "Check-out → check-in"
+      texte: "des rotations serrées, tenues 7j/7"
+  texte: "Derrière EDENEL NETTOYAGE PROFESSIONNEL, il y a une équipe qui entretient des hébergements touristiques et d'affaires haut de gamme depuis plus de dix ans. Nous avons développé une solide expérience là où l'exigence est la plus forte&nbsp;: des appartements notés par les voyageurs après chaque séjour, des rotations serrées entre un départ et une arrivée, des standards hôteliers à tenir sans exception. Cette expérience, nous la mettons aujourd'hui au service des propriétaires et des professionnels de la location courte durée, avec une conviction simple&nbsp;: un logement impeccable n'est pas un détail, c'est ce qui fait vos notes 5&nbsp;étoiles, vos commentaires élogieux et votre taux de remplissage. Interventions 7j/7 à Paris, dans le Val-de-Marne et dans toute l'Île-de-France, assurance responsabilité civile professionnelle, checklist qualité et compte-rendu photos après chaque passage&nbsp;: avec EDENEL NETTOYAGE PROFESSIONNEL, vous savez exactement à qui vous confiez vos clés."
+  signature: "L'équipe EDENEL NETTOYAGE PROFESSIONNEL"
+
+prestations:
+  eyebrow: "Nos prestations"
+  titre: "Services de Nettoyage Premium pour Locations saisonnières et Hôtels"
+  liste:
+    - id: presta-airbnb
+      page: /prestations/menage-airbnb
+      icone: balai
+      titre: "Ménage Premium Airbnb"
+      texte: "Nos équipes de terrain assurent un ménage de qualité, aux standards de l'hôtellerie. Le contrôle qualité rigoureux se fait par une checklist de contrôle signée par les intervenantes pour garantir leur engagement."
+    - id: presta-hotels
+      page: /prestations/nettoyage-hotelier
+      icone: hotel
+      titre: "Nettoyage Hôtelier"
+      texte: "Recouche et mise à blanc des chambres, entretien des parties communes, renfort de vos équipes d'étage ou externalisation complète : nos protocoles sont nés du standard hôtelier. Hôtels, résidences hôtelières et appart'hôtels — 7j/7."
+    - id: presta-linge
+      page: /prestations/entretien-du-linge
+      icone: lit
+      titre: "Entretien du linge de maison"
+      texte: "Nous assurons également les prestations de blanchisserie : lavage, séchage ou repassage du linge — avec un lit fait «&nbsp;qualité hôtel&nbsp;» pour l'arrivée de vos voyageurs."
+    - id: presta-stocks
+      icone: carton
+      titre: "Gestion des stocks de produits &amp; consommables"
+      texte: "Nous vous alertons sur les niveaux de stock et assurons le réapprovisionnement. Depuis notre outil HostyPilot, vous accédez en temps réel aux justificatifs d'achats et aux photos des produits achetés."
+    - id: presta-etat-des-lieux
+      icone: coche
+      titre: "État des lieux"
+      texte: "À l'arrivée dans les lieux, notre intervenante vérifie s'il y a d'éventuels dégâts et compare les écarts entre l'état des lieux d'entrée et celui de sortie. Les photos sont accessibles en temps réel via HostyPilot."
+    - id: presta-codes
+      icone: cle
+      titre: "Gestion des codes"
+      texte: "La gestion des codes des boîtes à clés ou des serrures connectées vous fatigue ? EDENEL NETTOYAGE PROFESSIONNEL s'en occupe pour vous soulager."
+    - id: presta-fin-de-bail
+      page: /prestations/fin-de-bail-fin-de-chantier
+      icone: etincelles
+      titre: "Grand ménage &amp; fin de bail"
+      texte: "Nettoyage en profondeur (four, hotte, frigo, placards), fin de bail ou fin de chantier — sur devis ou au forfait."
+      rdv: true
+
+autres:
+  eyebrow: "Au-delà de la location saisonnière"
+  titre: "Bureaux et Copropriétés : le même standard d'exigence"
+  liste:
+    - id: presta-moquette
+      page: /prestations/nettoyage-moquette-canape
+      icone: canape
+      titre: "Nettoyage moquette &amp; canapé"
+      texte: "Shampouinage par injection-extraction, détachage ciblé et désodorisation : moquettes, canapés, fauteuils et têtes de lit retrouvent leur fraîcheur — sur site, à l'hôtel comme à domicile, avec séchage rapide."
+    - id: presta-bureaux
+      page: /prestations/nettoyage-bureaux
+      icone: bureau
+      titre: "Nettoyage de bureaux"
+      texte: "Entretien régulier de vos locaux professionnels — postes de travail, salles de réunion, sanitaires, espaces détente — à la fréquence de votre choix, tôt le matin, le soir ou le week-end, sans gêner vos équipes. Devis gratuit et sans engagement."
+    - id: presta-copro
+      page: /prestations/entretien-copropriete
+      icone: immeuble
+      titre: "Entretien de copropriété"
+      texte: "Ménage des halls, escaliers et ascenseurs, vitrerie des parties communes, sortie et désinfection des containers : un contrat d'entretien clair pour syndics et conseils syndicaux, avec passages tracés (checklist signée, photos en ligne) et remplacement d'intervenant garanti."
+      rdv: true
+
+etapes:
+  eyebrow: "Comment ça marche"
+  titre: "Trois étapes, zéro stress"
+  liste:
+    - titre: "Réservez votre créneau"
+      texte: "Planifié ou dernière minute — jusqu'au jour même selon disponibilité. Vous nous indiquez l'heure du check-out et celle du check-in."
+    - titre: "Nous intervenons"
+      texte: "Ménage, linge, réassort et mise en scène selon la checklist qualité établie pour votre logement. Toute anomalie (dégradation, oubli d'un voyageur) vous est signalée immédiatement."
+    - titre: "Vous recevez le compte-rendu"
+      texte: "Photos du logement prêt et points d'attention, envoyés dès la fin de l'intervention. Même à distance, vous gardez le contrôle."
+
+zone:
+  eyebrow: "Zone d'intervention"
+  titre: "Paris, Val-de-Marne et toute l'Île-de-France"
+  texte: "Notre société de nettoyage intervient en priorité à Paris (tous arrondissements) et dans le Val-de-Marne (94) — Vincennes, Saint-Mandé, Charenton-le-Pont, Saint-Maur-des-Fossés, Nogent-sur-Marne, Créteil… — et couvre l'ensemble de l'Île-de-France, 7 jours sur 7, week-ends et jours fériés compris. Ménage Airbnb entre deux voyageurs, nettoyage de logements Booking, appartements d'affaires : nous nous déplaçons là où sont vos locations."
+  chips:
+    - "Paris — tous arrondissements"
+    - "Val-de-Marne (94)"
+    - "Hauts-de-Seine (92)"
+    - "Seine-Saint-Denis (93)"
+    - "Grande couronne"
+  tarif:
+    eyebrow: "Tarifs transparents"
+    points:
+      - "Grille tarifaire claire, communiquée avant toute intervention"
+      - "Forfaits par type de logement (studio à T5 / maison), remise de 8&nbsp;% avec le Tarif Fidélité"
+      - "Sans engagement — vous ajustez au rythme de vos réservations"
+    cta: "Voir la grille tarifaire"
+
+seo:
+  eyebrow: "Ménage Airbnb &amp; location courte durée"
+  titre: "Votre société de ménage Airbnb à Paris et en Île-de-France"
+  paragraphes:
+    - "Trouver une <strong>société de nettoyage</strong> fiable est le nerf de la guerre de toute <strong>location courte durée</strong>. Un <strong>ménage Airbnb</strong> professionnel, réalisé entre deux voyageurs dans la fenêtre serrée qui sépare le check-out du check-in, c'est ce qui protège vos commentaires, votre note 5 étoiles et votre statut de SuperHost — et donc votre taux de remplissage. EDENEL NETTOYAGE PROFESSIONNEL met des standards hôteliers au service de votre <strong>location saisonnière</strong>, que vous louiez sur Airbnb, Booking, Abritel ou en direct."
+    - "Nos prestations couvrent tout le cycle de vie de votre logement : <strong>nettoyage entre deux locations</strong>, <strong>gestion du linge et blanchisserie</strong> (lavage, séchage, repassage, changement des draps et serviettes, lit fait qualité hôtel), réassort des consommables, <strong>nettoyage de fin de bail</strong> avec état des lieux, <strong>ménage de fin de chantier</strong> et nettoyage de vitres. Nos <strong>forfaits ménage Airbnb</strong> par type de logement (studio à T5) vous permettent d'anticiper vos frais de ménage et de les intégrer sereinement à votre tarification."
+    - "Vous êtes une <strong>conciergerie Airbnb</strong> ou un gestionnaire multi-logements ? Nous assurons le <strong>ménage en sous-traitance pour les conciergeries</strong>, avec un engagement écrit de non-sollicitation de vos clients, une checklist qualité signée par nos intervenantes et un compte-rendu photos après chaque passage — même à distance, vous gardez le contrôle."
+
+faqSection:
+  eyebrow: "Questions fréquentes"
+  titre: "Ménage de location saisonnière : vos questions"
+
+avisSection:
+  eyebrow: "Ils nous font confiance"
+  titre: "Ce que nos clients disent de nous"
+
+blogSection:
+  eyebrow: "Blog"
+  titre: "Conseils propreté pour loueurs Airbnb, hôtels et conciergeries"
+  cta: "Tous les articles du blog"
+
+contact:
+  eyebrow: "Devis gratuit"
+  titre: "Confiez-nous vos clés,<br>concentrez-vous sur vos voyageurs"
+  texte: "Décrivez-nous votre logement et votre rythme de location : nous vous répondons sous 24&nbsp;h avec un devis personnalisé et sans engagement."
+  logements:
+    - "Studio / T1"
+    - "T2"
+    - "T3"
+    - "T4 ou maison 3 chambres"
+    - "T5 ou maison 4 chambres"
+    - "Plusieurs logements / conciergerie"
+    - "Bureaux"
+    - "Copropriété"

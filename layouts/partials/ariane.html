@@ -1,0 +1,8 @@
+{{- /* Fil d'Ariane visuel (le JSON-LD est dans jsonld.html) */ -}}
+<nav class="ariane" aria-label="Fil d'Ariane">
+  <ol>
+    <li><a href="{{ "/" | relLangURL }}">Accueil</a></li>
+    {{ if and (eq .Section "blog") .IsPage }}{{ with site.GetPage "/blog" }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>{{ end }}{{ end }}
+    <li aria-current="page">{{ .Title }}</li>
+  </ol>
+</nav>

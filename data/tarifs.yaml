@@ -1,0 +1,198 @@
+# =====================================================================
+#  GRILLE TARIFAIRE — source unique (page /tarifs/ + simulateur)
+#  Reprend l'onglet « Paramètres » du fichier
+#  EDENEL_MENAGE_PREMIUM_GRILLE_TARIFAIRE_24juillet2026_corrigee.xlsx
+#  Tous les montants sont HORS TAXES. Modifiez ici, le site se recalcule.
+# =====================================================================
+
+miseAJour: "24/07/2026"
+base: 28              # € HT / heure — taux horaire de base (pilote toute la grille)
+tva: 0.20
+majorationDimanche: 0.10
+remiseFidelite: 0.08
+supplementChantier: 5 # € / h en plus pour le ménage fin de chantier
+deplacement: 15       # € HT par commande
+produitsEntretien: 12 # € HT par prestation de ménage (avance obligatoire)
+produitsToilette: 28  # € HT — option
+laverieParLit: 6      # € HT par lit, pour toute prestation de linge
+
+# Coefficient appliqué au taux de base selon le délai de réservation
+delais:
+  - code: a
+    jours: 4
+    coef: 1.00
+    label: "Planifiée : 4 jours ou plus avant intervention"
+    court: "Planifiée (4 jours ou plus avant intervention)"
+  - code: b
+    jours: 3
+    coef: 1.20
+    label: "Dernière minute : 3 jours avant"
+    court: "Dernière minute — 3 jours avant"
+  - code: c
+    jours: 2
+    coef: 1.35
+    label: "Dernière minute : 2 jours avant"
+    court: "Dernière minute — 2 jours avant"
+  - code: d
+    jours: 1
+    coef: 1.50
+    label: "Dernière minute : 1 jour avant"
+    court: "Dernière minute — 1 jour avant"
+  - code: e
+    jours: 0
+    coef: 1.60
+    label: "Le jour même (selon disponibilité, commande avant 11 h 30)"
+    court: "Le jour même (selon dispo, commande avant 11 h 30)"
+
+# Prestations — l'ordre des colonnes est le même dans « heuresMin »
+prestations:
+  - nom: "Ménage seul ou Repassage seul"
+    simulateur: "Ménage seul /ou Repassage seul"
+    note: 1
+    menage: true
+    linge: false
+    chantier: false
+  - nom: "Repassage draps de lits (supplément d'un ménage)"
+    simulateur: "Repassage draps de lits (supplément d'un ménage)"
+    menage: false
+    linge: false
+    chantier: false
+  - nom: "Ménage + Laverie — Formule Airbnb"
+    simulateur: "Ménage + Laverie — Formule Airbnb"
+    note: 2
+    menage: true
+    linge: true
+    chantier: false
+  - nom: "Ménage fin de bail > 1,5 mois (en profondeur)"
+    simulateur: "Ménage fin de bail (> 1,5 mois, en profondeur)"
+    note: 3
+    menage: true
+    linge: false
+    chantier: false
+  - nom: "Nettoyage des vitres (supplément d'un ménage)"
+    simulateur: "Nettoyage des Vitres (supplément d'un ménage)"
+    menage: false
+    linge: false
+    chantier: false
+  - nom: "Laverie / Linge — lavage, séchage (hors repassage)"
+    simulateur: "Laverie/Linge — lavage/séchage (hors repassage)"
+    note: 4
+    menage: false
+    linge: true
+    chantier: false
+  - nom: "Ménage fin de chantier (hors linge et hors vitres)"
+    simulateur: "Ménage fin de chantier (hors linge et hors vitres)"
+    note: 5
+    menage: true
+    linge: false
+    chantier: true
+  - nom: "Nettoyage des vitres seules"
+    simulateur: "Nettoyage des Vitres seules"
+    menage: false
+    linge: false
+    chantier: false
+
+logements:
+  - "T1 / Studio"
+  - "T2 (2 pièces)"
+  - "T3 (3 pièces)"
+  - "T4 (4 pièces)"
+  - "T5 (5 pièces)"
+
+# Nombre d'heures minimum à commander : une ligne par logement, une colonne par prestation (même ordre que ci-dessus)
+heuresMin:
+  - [1.75, 0.50, 3.00, 3.50, 0.50, 1.50, 3.00, 1.00]   # T1 / Studio
+  - [2.00, 0.75, 3.50, 4.00, 0.75, 1.50, 3.50, 1.50]   # T2
+  - [2.50, 1.00, 4.00, 5.00, 1.00, 1.75, 4.00, 2.00]   # T3
+  - [3.50, 1.25, 5.25, 6.25, 1.50, 2.25, 5.25, 3.00]   # T4
+  - [4.50, 2.00, 6.50, 7.50, 2.00, 3.00, 6.50, 4.00]   # T5
+
+notes:
+  - "Ménage hors lavage-séchage du linge, hors produits (produits achetés par l'intervenante mais financés par le donneur d'ordre). Le repassage doit être commandé en supplément."
+  - "Formule Airbnb : ménage y compris lavage-séchage du linge, hors repassage. Le repassage doit faire l'objet d'une ligne de commande supplémentaire."
+  - "Ménage en fin de bail (location de plus de 2 mois), y compris nettoyage ou décrassage four, filtre de hotte, frigo, placards — hors lavage-séchage et repassage du linge, qui doivent faire l'objet d'une commande séparée."
+  - "Lavage-séchage hors repassage. Le repassage doit être commandé en supplément."
+  - "Ménage fin de chantier : hors linge et hors nettoyage des vitres. Si besoin, commander en supplément : Laverie / Linge, Nettoyage des vitres et produit nettoyant pour vitres."
+  - "Estimation du coût des machines à la laverie : 6 € HT par lit × nombre de lits proposés par le logement."
+  - "La durée minimum d'une intervention est de 1 heure, à laquelle s'ajoutent systématiquement les frais de déplacement de 15 € HT par commande."
+  - "Quel que soit le nombre d'heures commandées, des frais de déplacement de 15 € HT sont systématiquement ajoutés par commande."
+  - "Estimations — produits à la charge du donneur d'ordre, achetés par l'intervenant(e)."
+  - "La salle à manger ouverte sur le salon compte pour une pièce entière. T6 et plus, ou toute autre prestation : sur devis — contactez-nous."
+
+# Jours fériés (France) utilisés pour la majoration de 10 %
+joursFeries:
+  - "2026-01-01"
+  - "2026-04-06"
+  - "2026-05-01"
+  - "2026-05-08"
+  - "2026-05-14"
+  - "2026-05-25"
+  - "2026-07-14"
+  - "2026-08-15"
+  - "2026-11-01"
+  - "2026-11-11"
+  - "2026-12-25"
+  - "2027-01-01"
+  - "2027-03-29"
+  - "2027-05-01"
+  - "2027-05-06"
+  - "2027-05-08"
+  - "2027-05-17"
+  - "2027-07-14"
+  - "2027-08-15"
+  - "2027-11-01"
+  - "2027-11-11"
+  - "2027-12-25"
+  - "2028-01-01"
+  - "2028-04-17"
+  - "2028-05-01"
+  - "2028-05-08"
+  - "2028-05-25"
+  - "2028-06-05"
+  - "2028-07-14"
+  - "2028-08-15"
+  - "2028-11-01"
+  - "2028-11-11"
+  - "2028-12-25"
+
+# ---------------------------------------------------------------------
+#  BUREAUX & COPROPRIÉTÉS (proposition validée du 24/07/2026)
+# ---------------------------------------------------------------------
+bureaux:
+  minHeures: 2
+  ponctuel:
+    - nom: "Nettoyage de bureaux"
+      taux: 32
+      note: "Intervention ponctuelle (petites surfaces, vitrines, remise en propreté) — minimum 2 h, + frais de déplacement 15 € HT par commande."
+    - nom: "Vitrerie de bureaux (à hauteur humaine)"
+      taux: 35
+      note: "En supplément d'un contrat ou en ponctuel."
+  contrat:
+    - max: 100
+      prix: 4.50
+      frequence: "2 passages / semaine"
+      libelle: "Petits bureaux — moins de 100 m²"
+    - max: 300
+      prix: 3.50
+      frequence: "3 à 5 passages / semaine"
+      libelle: "Bureaux de 100 à 300 m²"
+  baseGrand: 2.50
+  remiseAnnuelle: 0.05
+
+copro:
+  tailles:
+    - nom: "Petite copropriété — moins de 10 lots (1 passage / semaine)"
+      detail: "Hall, escaliers, boîtes aux lettres"
+      prix: 250
+    - nom: "Copropriété 10 à 30 lots (2 passages / semaine)"
+      detail: "+ ascenseur, locaux communs"
+      prix: 490
+    - nom: "Copropriété 30 à 50 lots (2 à 3 passages / semaine)"
+      detail: "Au-delà de 50 lots : sur devis après visite"
+      prix: 694
+    - nom: "Plus de 50 lots — sur devis après visite"
+      detail: ""
+      prix: 0
+  containers: 100
+  vitrerie: 150
+  remiseAnnuelle: 0.05

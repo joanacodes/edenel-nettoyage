@@ -1,0 +1,40 @@
+{{- $home := "/" | relLangURL -}}
+{{- $blog := site.GetPage "/blog" -}}
+{{- $tarifs := site.GetPage "/tarifs" -}}
+<header>
+  <div class="wrap nav">
+    {{ partial "marque.html" (dict "classe" "") }}
+    <button class="burger" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="nav-principal" onclick="basculerMenu(this)">
+      <svg class="ico-ouvrir" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="ico-fermer" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <nav class="liens" id="nav-principal" aria-label="Navigation principale">
+      {{ with site.GetPage "/prestations" }}
+      <div class="menu-deroulant">
+        <a href="{{ .RelPermalink }}"{{ if eq $.Section "prestations" }} class="actif"{{ end }}>Prestations</a>
+        <ul>
+          {{ range .RegularPages.ByWeight }}<li><a href="{{ .RelPermalink }}">{{ .Params.menu | default .Title }}</a></li>
+          {{ end }}
+        </ul>
+      </div>
+      {{ end }}
+      <a href="{{ $home }}#experience">Expérience</a>
+      {{ with $tarifs }}<a href="{{ .RelPermalink }}"{{ if eq $.Permalink .Permalink }} aria-current="page"{{ end }}>Tarifs</a>{{ end }}
+      {{ with $blog }}
+      <div class="menu-deroulant menu-blog">
+        <a href="{{ .RelPermalink }}"{{ if eq $.Section "blog" }} class="actif"{{ end }}>Blog</a>
+        <ul>
+          {{ range first 15 .RegularPages }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>
+          {{ end }}
+        </ul>
+      </div>
+      {{ end }}
+      <a href="{{ $home }}#contact">Contact</a>
+      <a href="#" onclick="ouvrirCompte();return false">Espace client</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Générer un devis</button>
+      <button class="btn btn-vert" type="button" onclick="ouvrirCommande()">Passer commande <span class="badge" id="badge-panier" hidden>0</span></button>
+    </div>
+  </div>
+</header>

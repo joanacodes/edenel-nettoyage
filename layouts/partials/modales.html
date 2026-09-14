@@ -1,0 +1,392 @@
+{{- $t := hugo.Data.tarifs -}}
+{{- $cgv := site.GetPage "/cgv" -}}
+{{- $cgvUrl := "" -}}{{- with $cgv }}{{ $cgvUrl = .RelPermalink }}{{ end -}}
+<!-- ======= BON DE COMMANDE + SIMULATEUR ======= -->
+<div class="modal-fond" id="modal-commande" role="dialog" aria-modal="true" aria-labelledby="titre-commande" onclick="if(event.target===this)fermerCommande()">
+  <div class="modal modal-large">
+    <button class="modal-fermer" type="button" aria-label="Fermer" onclick="fermerCommande()">✕</button>
+    <h3 id="titre-commande">Passer commande</h3>
+    <p class="sous" id="sous-commande">Composez votre prestation : les montants HT se calculent automatiquement, la TVA de 20 % est ajoutée au total.</p>
+
+    <div class="bc-onglets espace-bas" role="tablist">
+      <button class="bc-onglet actif" id="ong-u-menage" type="button" onclick="choisirUnivers('menage')">Ménage Premium<br><span class="onglet-sous">Airbnb · Hôtels · Particuliers</span></button>
+      <button class="bc-onglet" id="ong-u-bureaux" type="button" onclick="choisirUnivers('bureaux')">Bureaux</button>
+      <button class="bc-onglet" id="ong-u-copro" type="button" onclick="choisirUnivers('copro')">Copropriétés</button>
+    </div>
+
+    <div id="zone-menage">
+      <div class="bc-onglets" role="tablist">
+        <button class="bc-onglet actif" id="ong-public" type="button" onclick="choisirFormule('public')">Tarif Public</button>
+        <button class="bc-onglet" id="ong-fidelite" type="button" onclick="choisirFormule('fidelite')">Tarif Fidélité (−8 %)</button>
+      </div>
+      <div class="bc-info" id="info-fidelite" hidden><strong>Tarif Fidélité (−8 % à vie)</strong> — acquis dès la <strong>5ᵉ commande</strong> ou dès <strong>400 € TTC de commandes cumulées</strong>. Condition unique : vos commandes sont enregistrées sous votre numéro client (créé automatiquement avec votre compte, visible dans l'Espace client). Indiquez ce numéro : la remise est appliquée immédiatement, puis vérifiée dans notre référentiel — en cas de numéro invalide ou de seuil non atteint, la prestation est refacturée au Tarif Public.</div>
+      <div class="champ champ-court" id="bloc-fidelite">
+        <label for="fid-num">Votre numéro client <span class="aide">(facultatif — requis pour le Tarif Fidélité)</span></label>
+        <input id="fid-num" type="text" placeholder="Ex. : SH-20260724-41" oninput="calculer()">
+      </div>
+
+      <div class="bc-ligne">
+        <div class="champ large">
+          <label for="bc-service">Prestation</label>
+          <select id="bc-service" onchange="majMinimum();calculer()"></select>
+        </div>
+        <div class="champ">
+          <label for="bc-logement">Type de logement</label>
+          <select id="bc-logement" onchange="majMinimum();calculer()"></select>
+        </div>
+        <div class="champ">
+          <label for="bc-heures">Nombre d'heures <span id="bc-heures-min" class="aide"></span></label>
+          <input id="bc-heures" type="number" min="1" max="14" step="0.25" value="2" onchange="calculer()" oninput="calculer()">
+        </div>
+        <div class="champ">
+          <label for="bc-date">Date d'intervention souhaitée</label>
+          <input id="bc-date" type="date" onchange="calculer()">
+        </div>
+        <div class="champ">
+          <label for="bc-heure">Heure d'intervention souhaitée</label>
+          <input id="bc-heure" type="time">
+        </div>
+        <div class="champ" id="bloc-lits" hidden>
+          <label for="bc-lits">Nombre de lits du logement</label>
+          <input id="bc-lits" type="number" min="1" max="12" step="1" value="1" onchange="calculer()" oninput="calculer()">
+        </div>
+        <div class="champ large">
+          <label for="bc-adresse">Adresse de l'intervention</label>
+          <input id="bc-adresse" type="text" autocomplete="off" placeholder="N°, rue, code postal, ville (Paris, 94, Île-de-France)">
+        </div>
+        <div class="champ large" id="bloc-prodok" hidden>
+          <label class="case">
+            <input type="checkbox" id="bc-prodok" onchange="calculer()">
+            <span>Les produits d'entretien obligatoires sont <strong>déjà achetés et livrés dans le logement</strong> (dans ce cas, l'avance de {{ $t.produitsEntretien }} € HT n'est pas facturée — précisez en commentaire où ils se trouvent).</span>
+          </label>
+        </div>
+        <div class="champ large">
+          <label class="case">
+            <input type="checkbox" id="bc-toilette" onchange="calculer()">
+            <span><strong>Option</strong> — Ajouter les produits de toilette &amp; consommables : épicerie, café, essuie-tout, papier toilette, lave-main, désodorisant ({{ $t.produitsToilette }} € HT).</span>
+          </label>
+        </div>
+        <div class="champ large">
+          <label for="bc-comment">Commentaire (facultatif)</label>
+          <textarea id="bc-comment" rows="2" placeholder="Ex. : les produits d'entretien sont dans le placard de l'entrée ; boîte à clés code…"></textarea>
+        </div>
+      </div>
+      <div class="bc-info" id="bc-detail">Sélectionnez une date pour connaître le tarif applicable.</div>
+      <div class="bc-info bc-alerte" id="bc-alerte" hidden>⚠ Rappel important : en l'absence des produits de nettoyage obligatoires, le ménage sera reporté et de nouveaux frais de déplacement seront facturés. Le ménage n'est réalisé que si les produits d'entretien sont commandés ou déjà livrés sur place par le donneur d'ordre.</div>
+
+      <div class="bc-total">
+        <div class="lig"><span>Prestation (HT)</span><span id="t-prest">—</span></div>
+        <div class="lig" id="lig-majo" hidden><span>Majoration dimanche / jour férié (+10 %)</span><span id="t-majo">—</span></div>
+        <div class="lig" id="lig-supp" hidden><span id="lbl-supp">Suppléments obligatoires (HT)</span><span id="t-supp">—</span></div>
+        <div class="lig" id="lig-opt" hidden><span>Produits de toilette &amp; consommables (option)</span><span id="t-opt">—</span></div>
+        <div class="lig"><span>Frais de déplacement ({{ $t.deplacement }} € HT / commande)</span><span id="t-depl">{{ $t.deplacement }},00 €</span></div>
+        <div class="lig"><span>Total HT</span><span id="t-ht">—</span></div>
+        <div class="lig"><span>TVA (20 %)</span><span id="t-tva">—</span></div>
+        <div class="lig ttc"><span>Total TTC</span><span id="t-ttc">—</span></div>
+      </div>
+
+      <div class="modal-actions quatre">
+        <button class="btn btn-teal" type="button" onclick="basculerDevis()">Générer le devis</button>
+        <button class="btn btn-ligne" type="button" onclick="fermerCommande();ouvrirRdv()">Prendre rendez-vous</button>
+        <button class="btn btn-vert" type="button" onclick="ajouterAuPanier()">Ajouter au panier</button>
+        <button class="btn btn-plein" type="button" onclick="ouvrirPanier()">Voir mon panier (<span id="cpt-panier">0</span>)</button>
+      </div>
+    </div><!-- fin zone-menage -->
+
+    <!-- ============ UNIVERS BUREAUX ============ -->
+    <div id="zone-bureaux" hidden>
+      <div class="bc-onglets">
+        <button class="bc-onglet actif" id="ong-b-ponctuel" type="button" onclick="choisirModeBureaux('ponctuel')">Intervention ponctuelle</button>
+        <button class="bc-onglet" id="ong-b-contrat" type="button" onclick="choisirModeBureaux('contrat')">Contrat d'entretien régulier</button>
+      </div>
+      <div id="b-ponctuel">
+        <div class="bc-ligne">
+          <div class="champ"><label for="bp-service">Prestation</label>
+            <select id="bp-service" onchange="calcBureaux()">{{ range $t.bureaux.ponctuel }}<option>{{ .nom }} — {{ .taux }} €/h HT</option>{{ end }}</select></div>
+          <div class="champ"><label for="bp-heures">Nombre d'heures <span class="aide">(min. {{ $t.bureaux.minHeures }} h)</span></label>
+            <input id="bp-heures" type="number" min="{{ $t.bureaux.minHeures }}" max="14" step="0.5" value="{{ $t.bureaux.minHeures }}" oninput="calcBureaux()" onchange="calcBureaux()"></div>
+          <div class="champ"><label for="bp-date">Date d'intervention souhaitée</label><input id="bp-date" type="date" onchange="calcBureaux()"></div>
+          <div class="champ"><label for="bp-heure">Heure d'intervention souhaitée</label><input id="bp-heure" type="time"></div>
+          <div class="champ large"><label for="bp-adresse">Adresse des locaux</label><input id="bp-adresse" type="text" autocomplete="off" placeholder="N°, rue, code postal, ville"></div>
+        </div>
+      </div>
+      <div id="b-contrat" hidden>
+        <div class="bc-ligne">
+          <div class="champ"><label for="bc-surface">Surface des bureaux (m²)</label>
+            <input id="bc-surface" type="number" min="10" max="5000" step="5" placeholder="Ex. : 80" oninput="calcBureaux()" onchange="calcBureaux()"></div>
+          <div class="champ large"><label for="bc-adr-bur">Adresse des locaux</label><input id="bc-adr-bur" type="text" autocomplete="off" placeholder="N°, rue, code postal, ville"></div>
+          <div class="champ large">
+            <label class="case">
+              <input type="checkbox" id="bc-annuel-bur" onchange="calcBureaux()">
+              <span><strong>Engagement annuel</strong> — remise de 5 % sur le forfait mensuel.</span>
+            </label>
+          </div>
+        </div>
+        <div class="bc-info">Barème : moins de 100 m² → {{ lang.FormatNumber 2 (index $t.bureaux.contrat 0).prix }} €/m²/mois (2 passages/semaine) · 100 à 300 m² → {{ lang.FormatNumber 2 (index $t.bureaux.contrat 1).prix }} €/m²/mois (3 à 5 passages/semaine) · plus de 300 m² → sur devis après visite (base indicative {{ lang.FormatNumber 2 $t.bureaux.baseGrand }} €/m²). Estimation à confirmer après visite gratuite sur site.</div>
+      </div>
+      <div class="bc-info" id="b-detail">Complétez les champs : l'estimation s'affiche instantanément.</div>
+      <div class="bc-total">
+        <div class="lig"><span id="b-lbl-ht">Total HT</span><span id="b-ht">—</span></div>
+        <div class="lig"><span>TVA (20 %)</span><span id="b-tva">—</span></div>
+        <div class="lig ttc"><span id="b-lbl-ttc">Total TTC</span><span id="b-ttc">—</span></div>
+      </div>
+      <div class="modal-actions quatre" id="b-actions">
+        <button class="btn btn-teal" type="button" onclick="basculerDevis()">Générer le devis</button>
+        <button class="btn btn-ligne" type="button" onclick="fermerCommande();ouvrirRdv()">Prendre rendez-vous</button>
+        <button class="btn btn-vert" type="button" id="b-btn-panier" onclick="ajouterAuPanierBureaux()">Ajouter au panier</button>
+        <button class="btn btn-plein" type="button" id="b-btn-voir" onclick="ouvrirPanier()">Voir mon panier (<span id="cpt-panier2">0</span>)</button>
+      </div>
+    </div>
+
+    <!-- ============ UNIVERS COPROPRIÉTÉS ============ -->
+    <div id="zone-copro" hidden>
+      <div class="bc-ligne">
+        <div class="champ large"><label for="co-taille">Taille de la copropriété</label>
+          <select id="co-taille" onchange="calcCopro()">
+            {{ range $t.copro.tailles }}<option>{{ .nom }}{{ if gt .prix 0 }} — {{ .prix }} €/mois HT{{ end }}</option>
+            {{ end }}
+          </select></div>
+        <div class="champ large"><label for="co-adresse">Adresse de l'immeuble</label><input id="co-adresse" type="text" autocomplete="off" placeholder="N°, rue, code postal, ville"></div>
+        <div class="champ large">
+          <label class="case">
+            <input type="checkbox" id="co-containers" onchange="calcCopro()">
+            <span><strong>Sortie / rentrée et désinfection des containers</strong> — +{{ $t.copro.containers }} €/mois HT.</span>
+          </label>
+          <label class="case case-suite">
+            <input type="checkbox" id="co-vitrerie" onchange="calcCopro()">
+            <span><strong>Vitrerie des parties communes</strong> — {{ $t.copro.vitrerie }} € HT par intervention (recommandé au trimestre).</span>
+          </label>
+          <label class="case case-suite">
+            <input type="checkbox" id="co-annuel" onchange="calcCopro()">
+            <span><strong>Contrat annuel</strong> — remise de 5 % sur le forfait mensuel.</span>
+          </label>
+        </div>
+      </div>
+      <div class="bc-info" id="co-detail">Sélectionnez la taille de votre immeuble : l'estimation s'affiche instantanément.</div>
+      <div class="bc-total">
+        <div class="lig"><span>Forfait mensuel HT</span><span id="co-ht">—</span></div>
+        <div class="lig"><span>TVA (20 %)</span><span id="co-tva">—</span></div>
+        <div class="lig ttc"><span>Total TTC / mois</span><span id="co-ttc">—</span></div>
+        <div class="lig" id="co-lig-vitr" hidden><span>Vitrerie parties communes (par intervention)</span><span id="co-vitr">{{ $t.copro.vitrerie }},00 € HT</span></div>
+      </div>
+      <div class="modal-actions quatre">
+        <button class="btn btn-teal" type="button" onclick="basculerDevis()">Générer le devis</button>
+        <button class="btn btn-ligne" type="button" onclick="fermerCommande();ouvrirRdv()">Prendre rendez-vous</button>
+      </div>
+      <p class="modal-note">Les contrats de copropriété se concluent sur devis, après visite gratuite de l'immeuble — le devis peut être présenté à votre conseil syndical ou en assemblée générale.</p>
+    </div>
+
+    <div class="champ large">
+      <label class="case">
+        <input type="checkbox" id="bc-cgv">
+        <span>J'ai lu et j'accepte les <a href="{{ $cgvUrl }}" target="_blank" rel="noopener" class="lien">Conditions Générales de Vente</a>, y compris les conditions d'annulation et la clause de sécurité des intervenants.</span>
+      </label>
+    </div>
+
+    <div id="panneau-devis" hidden>
+      <h4>Recevez votre devis personnalisé au nom d'EDENEL NETTOYAGE PRO</h4>
+      <div class="bc-ligne">
+        <div class="champ"><label for="dv-prenom">Prénom</label><input id="dv-prenom" type="text" placeholder="Votre prénom"></div>
+        <div class="champ"><label for="dv-nom">Nom</label><input id="dv-nom" type="text" placeholder="Votre nom"></div>
+        <div class="champ"><label for="dv-societe">Société (facultatif)</label><input id="dv-societe" type="text" placeholder="Nom de votre société"></div>
+        <div class="champ"><label for="dv-email">Email <span class="req">*</span></label><input id="dv-email" type="email" required placeholder="Pour recevoir le devis par email"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-vert" type="button" onclick="genererDevis()">Recevoir mon devis (email + téléchargement)</button>
+      </div>
+      <p class="modal-note" id="dv-note">Le devis reprend la prestation simulée ci-dessus et les prestations de votre panier. Gratuit et sans engagement — validité : 30 jours calendaires à compter de la date de génération du devis.</p>
+    </div>
+
+    <p class="modal-note">Tarifs HT conformes à notre grille — TVA de 20 % appliquée au montant total. Le tarif horaire dépend du délai de réservation (commande le jour même : avant 11 h 30, selon disponibilité). Durée minimum d'intervention : 1 h. Type de logement T6 et plus, ou autre prestation : contactez-nous pour un devis.</p>
+  </div>
+</div>
+
+<!-- ======= PANIER ======= -->
+<div class="modal-fond" id="modal-panier" role="dialog" aria-modal="true" aria-labelledby="titre-panier" onclick="if(event.target===this)fermerPanier()">
+  <div class="modal modal-large">
+    <button class="modal-fermer" type="button" aria-label="Fermer" onclick="fermerPanier()">✕</button>
+    <h3 id="titre-panier">Mon panier</h3>
+    <p class="sous">Vos prestations sélectionnées :</p>
+    <div id="liste-panier"></div>
+    <div class="bc-total">
+      <div class="lig"><span>Frais de déplacement (<span id="p-nbdepl">0</span> intervention(s) × {{ $t.deplacement }},00 € HT)</span><span id="p-depl">0,00 €</span></div>
+      <div class="lig"><span>Total HT</span><span id="p-ht">0,00 €</span></div>
+      <div class="lig"><span>TVA (20 %)</span><span id="p-tva">0,00 €</span></div>
+      <div class="lig ttc"><span>Total TTC</span><span id="p-ttc">0,00 €</span></div>
+    </div>
+    <div class="champ tel-bloc">
+      <label for="pan-tel">Téléphone mobile <span class="req">*</span> <span class="aide">(obligatoire pour commander)</span></label>
+      <div class="tel-ligne">
+        {{ partial "indicatifs.html" (dict "id" "pan-indicatif" "largeur" "170px") }}
+        <input id="pan-tel" type="tel" placeholder="0612345678" class="tel-champ">
+      </div>
+      <p class="modal-note note-serree" id="pan-note"></p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-vert" type="button" onclick="ouvrirPaiement()">Payez en toute sécurité</button>
+      <button class="lien-retour" type="button" onclick="fermerPanier();ouvrirCommande()">← Ajouter une autre prestation</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= PRENEZ RENDEZ-VOUS ======= -->
+<div class="modal-fond" id="modal-rdv" role="dialog" aria-modal="true" aria-labelledby="titre-rdv" onclick="if(event.target===this)fermerRdv()">
+  <div class="modal modal-large">
+    <button class="modal-fermer" type="button" aria-label="Fermer" onclick="fermerRdv()">✕</button>
+    <div class="rdv-entete">
+      {{ partial "logo.html" }}
+      <div>
+        <span class="m-nom">EDENEL</span>
+        <span class="m-sous">Nettoyage&nbsp;Pro</span>
+      </div>
+    </div>
+    <h3 id="titre-rdv">Prenez rendez-vous</h3>
+    <p class="sous">Choisissez une date et un créneau : nous vous rappelons pour confirmer.</p>
+
+    <div id="rdv-interne">
+      <div class="cal-nav">
+        <button type="button" aria-label="Mois précédent" onclick="changerMois(-1)">‹</button>
+        <strong id="cal-titre"></strong>
+        <button type="button" aria-label="Mois suivant" onclick="changerMois(1)">›</button>
+      </div>
+      <div class="cal-grille" id="cal-grille"></div>
+      <div class="creneaux" id="creneaux" hidden></div>
+      <div class="bc-ligne espace-haut">
+        <div class="champ"><label for="rdv-nom">Votre nom</label><input id="rdv-nom" type="text" placeholder="Ex. : Marie Dupont"></div>
+        <div class="champ"><label for="rdv-tel">Téléphone mobile <span class="req">*</span></label>
+          <div class="tel-ligne">
+            {{ partial "indicatifs.html" (dict "id" "rdv-indicatif" "largeur" "150px") }}
+            <input id="rdv-tel" type="tel" placeholder="0612345678" class="tel-champ">
+          </div>
+        </div>
+        <div class="champ"><label for="rdv-email">Email <span class="req">*</span></label><input id="rdv-email" type="email" required placeholder="Pour recevoir la confirmation"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-vert" type="button" onclick="envoyerRdv()">Confirmer ma demande de rendez-vous</button>
+      </div>
+      <p class="modal-note" id="rdv-note">Rendez-vous téléphonique ou sur site, 7j/7 — sans engagement.</p>
+    </div>
+    <div id="rdv-externe" hidden><iframe class="rdv-iframe" id="rdv-frame" title="Calendrier de réservation EDENEL"></iframe></div>
+  </div>
+</div>
+
+<!-- ======= BON DE RÉCEPTION & FACTURATION ======= -->
+<div class="modal-fond" id="modal-validation" role="dialog" aria-modal="true" aria-labelledby="titre-validation" onclick="if(event.target===this)fermerValidation()">
+  <div class="modal modal-large">
+    <button class="modal-fermer" type="button" aria-label="Fermer" onclick="fermerValidation()">✕</button>
+    <h3 id="titre-validation">Bon de réception &amp; Facturation</h3>
+    <p class="sous">La facture est émise au plus tôt 5 h après l'heure d'intervention planifiée, après double validation : la vôtre, puis la nôtre.</p>
+    <div class="bc-onglets" role="tablist">
+      <button class="bc-onglet actif" id="ong-br" type="button" onclick="choisirVolet('br')">① Client — je valide ma prestation</button>
+      <button class="bc-onglet" id="ong-fact" type="button" onclick="choisirVolet('fact')">② EDENEL — générer la facture</button>
+    </div>
+
+    <div id="volet-br">
+      <div class="bc-ligne">
+        <div class="champ"><label for="br-num">N° de commande ou de devis</label><input id="br-num" type="text" placeholder="Ex. : DEV-20260723-412"></div>
+        <div class="champ"><label for="br-date">Date de l'intervention</label><input id="br-date" type="date"></div>
+        <div class="champ"><label for="br-heure">Heure d'intervention planifiée <span class="aide">(indiquée par EDENEL)</span></label><input id="br-heure" type="time"></div>
+        <div class="champ"><label for="br-nom">Votre nom</label><input id="br-nom" type="text" placeholder="Prénom Nom"></div>
+        <div class="champ"><label for="br-email">Votre email</label><input id="br-email" type="email" placeholder="Pour l'accusé de réception"></div>
+        <div class="champ large"><label for="br-comm">Observations (facultatif)</label><textarea id="br-comm" rows="2" placeholder="Ex. : prestation conforme ; remarque éventuelle…"></textarea></div>
+        <div class="champ large">
+          <label class="case">
+            <input type="checkbox" id="br-ok">
+            <span><strong>Bon de réception</strong> — Je confirme la bonne exécution de la prestation à la date indiquée ci-dessus, sans réserve autre que mes éventuelles observations.</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-vert" type="button" onclick="envoyerBR()">Valider mon bon de réception</button>
+      </div>
+      <p class="modal-note" id="br-note">Cette validation nous est transmise immédiatement ; elle déclenche l'étape ② et l'émission de votre facture (au plus tôt 5 h après l'heure d'intervention planifiée).</p>
+    </div>
+
+    <div id="volet-fact" hidden>
+      <div class="bc-ligne">
+        <div class="champ"><label for="ft-code">Code interne EDENEL</label><input id="ft-code" type="password" placeholder="Réservé à l'équipe"></div>
+        <div class="champ"><label for="ft-num">N° de commande ou de devis</label><input id="ft-num" type="text" placeholder="Ex. : DEV-20260723-412"></div>
+        <div class="champ"><label for="ft-client">Client (Prénom Nom — Société)</label><input id="ft-client" type="text"></div>
+        <div class="champ"><label for="ft-email">Email du client</label><input id="ft-email" type="email"></div>
+        <div class="champ"><label for="ft-date">Date de l'intervention effective</label><input id="ft-date" type="date"></div>
+        <div class="champ"><label for="ft-heure">Heure d'intervention planifiée</label><input id="ft-heure" type="time"></div>
+        <div class="champ"><label for="ft-ht">Montant total HT (€)</label><input id="ft-ht" type="number" min="0" step="0.01" placeholder="Ex. : 97.00"></div>
+        <div class="champ large"><label for="ft-detail">Détail des prestations (une ligne par prestation)</label><textarea id="ft-detail" rows="3" placeholder="Ménage + Laverie/Linge — Formule Airbnb, T2, 3,5 h&#10;Frais de déplacement"></textarea></div>
+        <div class="champ"><label for="ft-statut">Statut du paiement</label>
+          <select id="ft-statut"><option>Payée en ligne — facture acquittée</option><option>À régler à réception</option></select>
+        </div>
+        <div class="champ large">
+          <label class="case">
+            <input type="checkbox" id="ft-v1">
+            <span><strong>Validation ① reçue</strong> — le client a validé son bon de réception (email reçu).</span>
+          </label>
+          <label class="case case-suite">
+            <input type="checkbox" id="ft-v2">
+            <span><strong>Validation ② interne</strong> — je confirme, au nom d'EDENEL, la bonne fin de l'intervention.</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-plein" type="button" onclick="genererFacture()">Générer la facture</button>
+      </div>
+      <p class="modal-note" id="ft-note">La génération est bloquée tant que les deux validations ne sont pas cochées et que 5 h ne se sont pas écoulées depuis l'heure d'intervention planifiée.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======= ESPACE CLIENT ======= -->
+<div class="modal-fond" id="modal-compte" role="dialog" aria-modal="true" aria-labelledby="titre-compte" onclick="if(event.target===this)fermerCompte()">
+  <div class="modal modal-large">
+    <button class="modal-fermer" type="button" aria-label="Fermer" onclick="fermerCompte()">✕</button>
+    <h3 id="titre-compte">Espace client</h3>
+
+    <div id="zone-auth">
+      <p class="sous" id="auth-sous">Créez votre compte lors de votre première commande, ou connectez-vous pour retrouver votre tableau de bord.</p>
+      <div class="bc-ligne">
+        <div class="champ"><label for="cp-nom">Votre nom</label><input id="cp-nom" type="text" placeholder="Prénom Nom"></div>
+        <div class="champ"><label for="cp-email">Email</label><input id="cp-email" type="email" placeholder="Votre email"></div>
+        <div class="champ"><label for="cp-pin">Code secret (4 chiffres minimum)</label><input id="cp-pin" type="password" placeholder="••••" minlength="4"></div>
+        <div class="champ"><label for="cp-tel">Téléphone mobile <span class="aide">(+33 0…)</span></label><input id="cp-tel" type="tel" placeholder="+33 0612345678"></div>
+      </div>
+      <div class="modal-actions quatre">
+        <button class="btn btn-vert" type="button" onclick="creerCompte()">Créer mon compte</button>
+        <button class="btn btn-plein" type="button" onclick="seConnecter()">Me connecter</button>
+      </div>
+      <p class="modal-note" id="auth-note">Vos informations et votre historique restent enregistrés dans votre navigateur, sur cet appareil uniquement — rien n'est stocké sur le site. La création d'un compte génère automatiquement votre numéro client (nécessaire pour le Tarif Fidélité).</p>
+      <button class="lien-retour" type="button" onclick="codeOublie()">Code secret oublié ?</button>
+    </div>
+
+    <div id="zone-tableau" hidden>
+      <p class="sous" id="tb-bonjour"></p>
+      <div class="bc-info" id="tb-infos"></div>
+      <div class="cmd-defile"><table class="cmd" id="tb-table"></table></div>
+      <div class="modal-actions quatre espace-haut">
+        <button class="btn btn-teal" type="button" onclick="pdfHistorique()">Télécharger l'historique (PDF)</button>
+        <button class="btn btn-ligne" type="button" onclick="seDeconnecter()">Me déconnecter</button>
+      </div>
+      <p class="modal-note">Historique enregistré localement dans votre navigateur — aucune facture n'est stockée sur le site. Le statut de la prestation et de la facture peuvent être ajustés via les menus de chaque ligne.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======= PAYEZ EN TOUTE SÉCURITÉ ======= -->
+<div class="modal-fond" id="modal-paiement" role="dialog" aria-modal="true" aria-labelledby="titre-paiement" onclick="if(event.target===this)fermerPaiement()">
+  <div class="modal">
+    <button class="modal-fermer" type="button" aria-label="Fermer" onclick="fermerPaiement()">✕</button>
+    <h3 id="titre-paiement">Payez en toute sécurité</h3>
+    <p class="sous" id="paiement-montant">Choisissez votre mode de paiement sécurisé :</p>
+    <div class="paiement">
+      <a href="{{ site.Params.lienStripe | default "LIEN_STRIPE_A_COLLER_ICI" }}" onclick="return verifLien(this)">
+        <span class="p-ico">VISA<br>MC</span>
+        <span><strong>Carte bancaire — Visa / Mastercard</strong>
+        <span class="det">Paiement sécurisé via Stripe</span></span>
+      </a>
+      <a href="{{ site.Params.lienPaypal | default "LIEN_PAYPAL_A_COLLER_ICI" }}" onclick="return verifLien(this)">
+        <span class="p-ico p-paypal">Pay<br>Pal</span>
+        <span><strong>PayPal</strong>
+        <span class="det">Payez avec votre compte PayPal</span></span>
+      </a>
+    </div>
+    <p class="modal-note" id="note-paiement">Paiement chiffré — aucune donnée bancaire n'est stockée sur ce site. Après l'intervention, validez votre bon de réception (lien « Bon de réception &amp; Facture » en pied de page) : votre facture est émise après double validation, au plus tôt 5 h après l'heure d'intervention planifiée.</p>
+  </div>
+</div>

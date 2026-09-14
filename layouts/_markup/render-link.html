@@ -1,0 +1,5 @@
+{{- /* Liens Markdown : les liens internes commençant par « / » suivent le baseURL (sous-dossier GitHub Pages) ; les liens externes reçoivent rel="noopener". */ -}}
+{{- $u := urls.Parse .Destination -}}
+{{- $href := .Destination -}}
+{{- if and (not $u.IsAbs) (hasPrefix .Destination "/") -}}{{- $href = relURL .Destination -}}{{- end -}}
+<a href="{{ $href }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if $u.IsAbs }} rel="noopener"{{ end }}>{{ .Text }}</a>

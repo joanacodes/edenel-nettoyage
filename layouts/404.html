@@ -1,0 +1,11 @@
+{{ define "main" }}
+<div class="wrap p404">
+  <span class="eyebrow centre">Erreur 404</span>
+  <h1>Page introuvable</h1>
+  <p>Cette page n'existe pas ou a été déplacée. Le ménage a peut-être été un peu trop efficace…</p>
+  <div class="hero-ctas centre">
+    <a class="btn btn-plein" href="{{ "/" | relLangURL }}">Retour à l'accueil</a>
+    {{ with site.GetPage "/blog" }}<a class="btn btn-ligne" href="{{ .RelPermalink }}">Lire le blog</a>{{ end }}
+  </div>
+</div>
+{{ end }}

@@ -1,0 +1,79 @@
+{{ define "main" }}
+{{- $t := hugo.Data.tarifs -}}
+<div class="page-entete">
+  <div class="wrap">
+    {{ partial "ariane.html" . }}
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.chapo | default .Description }}<p class="chapo">{{ . | safeHTML }}</p>{{ end }}
+    <div class="hero-ctas espace-haut">
+      <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+      <button class="btn btn-ligne" type="button" onclick="ouvrirRdv()">Prendre rendez-vous</button>
+    </div>
+  </div>
+</div>
+<div class="page-corps">
+  <div class="wrap page-grille">
+    <div>
+      <div class="prose">
+        {{ .Content }}
+      </div>
+
+      {{ with .Params.points }}
+      <section class="inclus" aria-labelledby="inclus-titre">
+        <h2 id="inclus-titre">Ce qui est inclus</h2>
+        <ul class="liste-inclus">
+          {{ range . }}<li><span class="puce-chev"></span>{{ . | safeHTML }}</li>
+          {{ end }}
+        </ul>
+      </section>
+      {{ end }}
+
+      {{ with .Params.faq }}
+      <section class="faq faq-page" aria-labelledby="faq-titre">
+        <h2 id="faq-titre">Questions fréquentes</h2>
+        {{ range . }}
+        <details>
+          <summary>{{ .question }}</summary>
+          <p>{{ .reponse | safeHTML }}</p>
+        </details>
+        {{ end }}
+      </section>
+      {{ end }}
+    </div>
+
+    <aside class="encart">
+      <h3>Tarifs indicatifs HT</h3>
+      {{ with .Params.tarifs }}
+      <ul class="encart-tarifs">
+        {{ range . }}<li><span>{{ .label }}</span><strong>{{ .montant }}</strong></li>
+        {{ end }}
+      </ul>
+      <p class="aide">Hors frais de déplacement ({{ $t.deplacement }} € HT par commande) et TVA 20 %. Tarif Fidélité −8 % dès la 5ᵉ commande.</p>
+      {{ end }}
+      <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Simuler mon devis</button>
+      {{ with site.GetPage "/tarifs" }}<a class="btn btn-ligne" href="{{ .RelPermalink }}{{ with $.Params.ancreTarifs }}#{{ . }}{{ end }}">Voir la grille complète</a>{{ end }}
+      <ul>
+        <li><span class="puce-chev"></span>7j/7, dimanches et jours fériés compris</li>
+        <li><span class="puce-chev"></span>Assurance RC professionnelle</li>
+        <li><span class="puce-chev"></span>Checklist signée et compte-rendu photos</li>
+      </ul>
+    </aside>
+  </div>
+
+  {{ $autres := where .CurrentSection.RegularPages "Permalink" "ne" .Permalink }}
+  {{ with $autres }}
+  <div class="wrap lire-aussi">
+    <h2>Nos autres prestations</h2>
+    <div class="grille-cartes auto espace-haut">
+      {{ range .ByWeight }}
+      <a class="presta presta-lien" href="{{ .RelPermalink }}">
+        <div class="ico">{{ partial "icone.html" .Params.icone }}</div>
+        <h3>{{ .Title }}</h3>
+        <p>{{ .Params.resume | default .Description }}</p>
+      </a>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+</div>
+{{ end }}

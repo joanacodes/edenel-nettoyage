@@ -1,0 +1,41 @@
+{{- $home := "/" | relLangURL -}}
+{{- $s := site.Params.societe -}}
+<footer>
+  <div class="wrap">
+    <div class="pied-grille">
+      <div>
+        {{ partial "marque.html" (dict "classe" "pied-marque") }}
+        <p>Société de ménage Airbnb &amp; nettoyage de locations courte durée, hôtels, bureaux et copropriétés — Paris · Val-de-Marne (94) · Île-de-France, 7j/7.</p>
+        <address class="pied-adresse">
+          {{ $s.raison }}<br>{{ $s.rue }}, {{ $s.cp }} {{ $s.ville }}<br>
+          <a href="mailto:{{ site.Params.email }}">{{ site.Params.email }}</a>
+          {{ with site.Params.telephone }}<br><a href="tel:{{ replace . " " "" }}">{{ . }}</a>{{ end }}
+        </address>
+      </div>
+      <div>
+        <h3>Navigation</h3>
+        <ul>
+          <li><a href="{{ $home }}#prestations">Nos prestations</a></li>
+          <li><a href="{{ $home }}#experience">Notre expérience</a></li>
+          {{ with site.GetPage "/tarifs" }}<li><a href="{{ .RelPermalink }}">Grille tarifaire</a></li>{{ end }}
+          {{ with site.GetPage "/blog" }}<li><a href="{{ .RelPermalink }}">Blog — conseils propreté</a></li>{{ end }}
+          <li><a href="{{ $home }}#faq">Questions fréquentes</a></li>
+          <li><a href="{{ $home }}#contact">Contact &amp; devis gratuit</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Votre compte &amp; légal</h3>
+        <ul>
+          <li><a href="#" onclick="ouvrirCompte();return false">Espace client</a></li>
+          <li><a href="#" onclick="ouvrirValidation();return false">Bon de réception &amp; Facture</a></li>
+          {{ with site.GetPage "/cgv" }}<li><a href="{{ .RelPermalink }}">Conditions Générales de Vente</a></li>{{ end }}
+          {{ with site.GetPage "/mentions-legales" }}<li><a href="{{ .RelPermalink }}">Mentions légales &amp; Confidentialité</a></li>{{ end }}
+        </ul>
+      </div>
+    </div>
+    <div class="pied-bas">
+      <span>© {{ now.Year }} {{ site.Params.marque }} — {{ site.Params.filiation }}</span>
+      <span>{{ $s.rcs }} · SIRET {{ $s.siret }} · TVA {{ $s.tva }}</span>
+    </div>
+  </div>
+</footer>

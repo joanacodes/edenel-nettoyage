@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+{{ partial "head.html" . }}
+</head>
+<body>
+<a class="skip" href="#contenu">Aller au contenu</a>
+{{ partial "header.html" . }}
+<main id="contenu">
+{{ block "main" . }}{{ end }}
+</main>
+{{ partial "footer.html" . }}
+{{ partial "modales.html" . }}
+{{- with resources.Get "js/app.js" }}
+  {{- $js := . | resources.ExecuteAsTemplate "js/app.js" $ | minify | fingerprint "sha256" }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" crossorigin="anonymous" defer></script>
+{{- end }}
+</body>
+</html>

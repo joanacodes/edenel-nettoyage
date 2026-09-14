@@ -1,0 +1,105 @@
+{{- $s := site.Params.societe -}}
+{{- $orgId := printf "%s#organisation" site.Home.Permalink -}}
+{{- $org := dict
+  "@type" (slice "LocalBusiness" "HousekeepingService")
+  "@id" $orgId
+  "name" site.Params.marque
+  "alternateName" site.Params.marqueCourte
+  "legalName" $s.raison
+  "url" site.Home.Permalink
+  "logo" ((site.Params.ogImage | default "og-image.png") | absURL)
+  "image" ((site.Params.ogImage | default "og-image.png") | absURL)
+  "email" site.Params.email
+  "description" site.Params.description
+  "vatID" $s.tva
+  "taxID" $s.siret
+  "priceRange" "à partir de 28 €/h HT"
+  "currenciesAccepted" "EUR"
+  "paymentAccepted" "Carte bancaire, PayPal"
+  "address" (dict "@type" "PostalAddress" "streetAddress" $s.rue "postalCode" $s.cp "addressLocality" $s.ville "addressRegion" "Île-de-France" "addressCountry" "FR")
+  "areaServed" (apply site.Params.zone "dict" "@type" "Place" "name" ".")
+  "openingHoursSpecification" (slice (dict "@type" "OpeningHoursSpecification" "dayOfWeek" (slice "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday") "opens" "08:00" "closes" "20:00"))
+  "knowsAbout" (slice "ménage Airbnb" "nettoyage location courte durée" "blanchisserie" "nettoyage fin de bail" "nettoyage de bureaux" "entretien de copropriété" "nettoyage hôtelier")
+-}}
+{{- with site.Params.telephone }}{{ $org = merge $org (dict "telephone" .) }}{{ end -}}
+{{- $graph := slice $org (dict
+  "@type" "WebSite"
+  "@id" (printf "%s#site" site.Home.Permalink)
+  "url" site.Home.Permalink
+  "name" site.Params.marque
+  "inLanguage" "fr-FR"
+  "publisher" (dict "@id" $orgId)
+) -}}
+
+{{- /* ---- Page d'accueil : FAQ ---- */ -}}
+{{- if .IsHome -}}
+  {{- $q := slice -}}
+  {{- range hugo.Data.faq -}}
+    {{- $q = $q | append (dict "@type" "Question" "name" .question "acceptedAnswer" (dict "@type" "Answer" "text" .reponse)) -}}
+  {{- end -}}
+  {{- $graph = $graph | append (dict "@type" "FAQPage" "@id" (printf "%s#faq" .Permalink) "mainEntity" $q) -}}
+{{- end -}}
+
+{{- /* ---- Fil d'Ariane sur les pages internes ---- */ -}}
+{{- if not .IsHome -}}
+  {{- $items := slice (dict "@type" "ListItem" "position" 1 "name" "Accueil" "item" site.Home.Permalink) -}}
+  {{- $pos := 2 -}}
+  {{- if and (eq .Section "blog") .IsPage -}}
+    {{- with site.GetPage "/blog" -}}
+      {{- $items = $items | append (dict "@type" "ListItem" "position" 2 "name" .Title "item" .Permalink) -}}
+      {{- $pos = 3 -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $items = $items | append (dict "@type" "ListItem" "position" $pos "name" .Title "item" .Permalink) -}}
+  {{- $graph = $graph | append (dict "@type" "BreadcrumbList" "@id" (printf "%s#ariane" .Permalink) "itemListElement" $items) -}}
+{{- end -}}
+
+{{- /* ---- Article de blog ---- */ -}}
+{{- if and (eq .Section "blog") .IsPage -}}
+  {{- $graph = $graph | append (dict
+    "@type" "BlogPosting"
+    "@id" (printf "%s#article" .Permalink)
+    "mainEntityOfPage" .Permalink
+    "headline" .Title
+    "description" (.Description | default .Summary | plainify | htmlUnescape)
+    "datePublished" (.Date.Format "2006-01-02T15:04:05-07:00")
+    "dateModified" (.Lastmod.Format "2006-01-02T15:04:05-07:00")
+    "inLanguage" "fr-FR"
+    "wordCount" .WordCount
+    "keywords" (delimit (.Params.tags | default slice) ", ")
+    "image" ((site.Params.ogImage | default "og-image.png") | absURL)
+    "author" (dict "@id" $orgId)
+    "publisher" (dict "@id" $orgId)
+  ) -}}
+{{- end -}}
+
+{{- /* ---- Page prestation : Service + FAQ ---- */ -}}
+{{- if and (eq .Section "prestations") .IsPage -}}
+  {{- $service := dict
+    "@type" "Service"
+    "@id" (printf "%s#service" .Permalink)
+    "name" .Title
+    "serviceType" (.Params.serviceType | default .Title)
+    "description" (.Description | plainify | htmlUnescape)
+    "url" .Permalink
+    "inLanguage" "fr-FR"
+    "provider" (dict "@id" $orgId)
+    "areaServed" (apply site.Params.zone "dict" "@type" "Place" "name" ".")
+    "availableChannel" (dict "@type" "ServiceChannel" "serviceUrl" .Permalink "availableLanguage" "fr")
+  -}}
+  {{- with .Params.prixBase -}}
+    {{- $service = merge $service (dict "offers" (dict "@type" "Offer" "priceCurrency" "EUR" "price" . "priceSpecification" (dict "@type" "UnitPriceSpecification" "price" . "priceCurrency" "EUR" "unitText" ($.Params.uniteprix | default "heure HT") "valueAddedTaxIncluded" false) "availability" "https://schema.org/InStock" "url" $.Permalink)) -}}
+  {{- end -}}
+  {{- $graph = $graph | append $service -}}
+  {{- with .Params.faq -}}
+    {{- $q := slice -}}
+    {{- range . }}{{ $q = $q | append (dict "@type" "Question" "name" .question "acceptedAnswer" (dict "@type" "Answer" "text" (.reponse | plainify | htmlUnescape))) }}{{ end -}}
+    {{- $graph = $graph | append (dict "@type" "FAQPage" "@id" (printf "%s#faq" $.Permalink) "mainEntity" $q) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* ---- Liste du blog ---- */ -}}
+{{- if and (eq .Section "blog") (not .IsPage) -}}
+  {{- $graph = $graph | append (dict "@type" "Blog" "@id" (printf "%s#blog" .Permalink) "url" .Permalink "name" .Title "inLanguage" "fr-FR" "publisher" (dict "@id" $orgId)) -}}
+{{- end -}}
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" $graph | jsonify (dict "noHTMLEscape" true) | safeJS }}</script>

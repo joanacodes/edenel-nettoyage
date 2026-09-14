@@ -1,0 +1,109 @@
+# =====================================================================
+#  EDENEL NETTOYAGE PROFESSIONNEL — configuration Hugo
+#  Doc : https://gohugo.io/getting-started/configuration/
+# =====================================================================
+
+# ⚠ En production, le workflow GitHub Actions remplace automatiquement
+# cette valeur par l'URL de vos GitHub Pages (ou de votre domaine).
+baseURL = "https://VOTRE-UTILISATEUR.github.io/edenel-nettoyage/"
+
+title = "EDENEL NETTOYAGE PROFESSIONNEL"
+locale = "fr-FR"
+defaultContentLanguage = "fr"
+timeZone = "Europe/Paris"
+enableRobotsTXT = true
+enableGitInfo = false
+summaryLength = 40
+disableKinds = ["taxonomy", "term"]   # pas de pages /tags/ pour l'instant (réactivable)
+
+[languages.fr]
+  label = "Français"
+  weight = 1
+
+[permalinks]
+  [permalinks.page]
+    blog = "/blog/:slug/"
+
+[outputs]
+  home = ["HTML", "RSS"]
+  section = ["HTML", "RSS"]
+  page = ["HTML"]
+
+[pagination]
+  pagerSize = 15
+
+[related]
+  includeNewer = true
+  threshold = 60
+  toLower = true
+  [[related.indices]]
+    name = "tags"
+    weight = 100
+  [[related.indices]]
+    name = "date"
+    weight = 10
+
+[sitemap]
+  changefreq = "weekly"
+  priority = 0.5
+  filename = "sitemap.xml"
+
+[minify]
+  minifyOutput = true
+  [minify.tdewolff.html]
+    keepWhitespace = false
+    keepQuotes = true
+  [minify.tdewolff.js]
+    precision = 0
+
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true          # autorise le HTML dans les fichiers Markdown
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
+
+# ---------------------------------------------------------------------
+#  Paramètres du site (utilisés par les templates)
+# ---------------------------------------------------------------------
+[params]
+  description = "Société de ménage Airbnb à Paris, dans le Val-de-Marne (94) et en Île-de-France : nettoyage professionnel de locations courte durée entre deux voyageurs, gestion du linge et blanchisserie, forfait ménage Airbnb, nettoyage fin de bail. Interventions 7j/7, devis gratuit."
+  marque = "EDENEL NETTOYAGE PROFESSIONNEL"
+  marqueCourte = "EDENEL NETTOYAGE PRO"
+  filiation = "Une marque de EDENEL PATRIMOINE GESTION"
+  email = "edenelpatrimoine@gmail.com"
+  telephone = ""                       # ex. "+33 6 12 34 56 78" (affiché dans le pied de page et le JSON-LD si renseigné)
+  ogImage = "og-image.png"             # image de partage (1200×630) dans /static/
+  zone = ["Paris", "Val-de-Marne", "Île-de-France"]
+  horaires = "Mo-Su 08:00-20:00"
+
+  # Formulaires (FormSubmit) — l'adresse doit être activée une première fois (email de confirmation FormSubmit)
+  formsubmit = "edenelpatrimoine@gmail.com"
+
+  # Liens de paiement — à coller quand vos comptes Stripe / PayPal sont prêts
+  lienStripe = ""
+  lienPaypal = ""
+
+  # Calendrier externe (Calendly, Google…) — vide = calendrier intégré
+  calendrierExterne = ""
+
+  # Code d'accès de l'équipe pour la génération de facture (⚠ visible dans le JS public : ne protège pas des personnes déterminées)
+  codeInterne = "EDENEL2026"
+
+  [params.societe]
+    raison = "EDENEL PATRIMOINE GESTION RESEAUX & SERVICES"
+    forme = "SAS — Société par Actions Simplifiée, au capital de 2 500 €"
+    capital = "2 500 €"
+    rcs = "RCS Créteil 104 632 591"
+    siret = "104 632 591 00012"
+    ape = "6831Z"
+    tva = "FR62104632591"
+    rue = "14 rue de Champigny"
+    cp = "94370"
+    ville = "Sucy-en-Brie"
+    directeur = "Sonia Hountondji"
+    hebergeur = "GitHub, Inc. — 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis (GitHub Pages)"
+
+[services]
+  [services.rss]
+    limit = 20

@@ -1,0 +1,57 @@
+{{- /* ===================== SEO : titre & description ===================== */ -}}
+{{- $titre := "" -}}
+{{- if .IsHome -}}
+  {{- $titre = .Params.seoTitle | default site.Title -}}
+{{- else -}}
+  {{- $titre = printf "%s | %s" (.Params.seoTitle | default .Title) site.Params.marque -}}
+{{- end -}}
+{{- $description := .Description | default .Summary | default site.Params.description | plainify | htmlUnescape | truncate 300 -}}
+{{- $ogImage := (site.Params.ogImage | default "og-image.png") | absURL -}}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ $titre }}</title>
+<meta name="description" content="{{ $description }}">
+<link rel="canonical" href="{{ .Permalink }}">
+<meta name="robots" content="{{ if .Params.noindex }}noindex, nofollow{{ else }}index, follow, max-image-preview:large{{ end }}">
+<meta name="theme-color" content="#1E2A6E">
+<meta name="author" content="{{ site.Params.marque }}">
+{{- /* ===================== Open Graph / Twitter ===================== */}}
+<meta property="og:locale" content="fr_FR">
+<meta property="og:site_name" content="{{ site.Params.marque }}">
+<meta property="og:type" content="{{ if eq .Section "blog" }}{{ if .IsPage }}article{{ else }}website{{ end }}{{ else }}website{{ end }}">
+<meta property="og:title" content="{{ .Params.seoTitle | default .Title | default site.Title }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:image" content="{{ $ogImage }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ site.Params.marque }} — ménage Airbnb, hôtels, bureaux et copropriétés en Île-de-France">
+{{- if and (eq .Section "blog") .IsPage }}
+<meta property="article:published_time" content="{{ .Date.Format "2006-01-02T15:04:05-07:00" }}">
+<meta property="article:modified_time" content="{{ .Lastmod.Format "2006-01-02T15:04:05-07:00" }}">
+{{- range .Params.tags }}
+<meta property="article:tag" content="{{ . }}">
+{{- end }}
+{{- end }}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ .Params.seoTitle | default .Title | default site.Title }}">
+<meta name="twitter:description" content="{{ $description }}">
+<meta name="twitter:image" content="{{ $ogImage }}">
+{{- /* ===================== Flux, icônes ===================== */}}
+{{- with .OutputFormats.Get "rss" }}
+<link rel="alternate" type="application/rss+xml" title="{{ site.Params.marque }} — Blog" href="{{ .Permalink }}">
+{{- end }}
+<link rel="icon" href="{{ "favicon.svg" | relURL }}" type="image/svg+xml">
+<link rel="icon" href="{{ "favicon.png" | relURL }}" type="image/png" sizes="48x48">
+<link rel="apple-touch-icon" href="{{ "apple-touch-icon.png" | relURL }}">
+<link rel="manifest" href="{{ "site.webmanifest" | relURL }}">
+{{- /* ===================== Polices auto-hébergées (préchargement des 2 principales) ===================== */}}
+<link rel="preload" href="{{ "fonts/sora-latin-800-normal.woff2" | relURL }}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{{ "fonts/figtree-latin-400-normal.woff2" | relURL }}" as="font" type="font/woff2" crossorigin>
+{{- /* ===================== CSS : minifié + empreinte (cache long) ===================== */}}
+{{- with resources.Get "css/main.css" }}
+  {{- $css := . | minify | fingerprint "sha256" }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}" crossorigin="anonymous">
+{{- end }}
+{{- /* ===================== Données structurées (JSON-LD) ===================== */}}
+{{ partial "jsonld.html" . }}

@@ -1,0 +1,8 @@
+{{- /* Bloc « EDENEL / NETTOYAGE PRO » utilisé dans l'en-tête et le pied de page */ -}}
+<a class="marque{{ with .classe }} {{ . }}{{ end }}" href="{{ "/" | relLangURL }}" aria-label="{{ site.Params.marqueCourte }} — accueil">
+  {{ partial "logo.html" }}
+  <span class="marque-txt">
+    <span class="marque-nom">EDENEL</span>
+    <span class="marque-sous" aria-hidden="true"><span>N</span><span>E</span><span>T</span><span>T</span><span>O</span><span>Y</span><span>A</span><span>G</span><span>E</span><span>&nbsp;</span><span>P</span><span>R</span><span>O</span></span>
+  </span>
+</a>

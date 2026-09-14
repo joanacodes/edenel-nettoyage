@@ -1,0 +1,32 @@
+{{ define "main" }}
+<div class="page-entete">
+  <div class="wrap">
+    {{ partial "ariane.html" . }}
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.chapo | default .Description }}<p class="chapo">{{ . | safeHTML }}</p>{{ end }}
+  </div>
+</div>
+<div class="page-corps">
+  <div class="wrap">
+    {{ with .Content }}<div class="prose espace-bas">{{ . }}</div>{{ end }}
+    {{ $pages := .Paginate .RegularPages }}
+    <div class="blog-grille">
+      {{ range $pages.Pages }}{{ partial "carte-article.html" . }}{{ end }}
+    </div>
+    {{ if gt $pages.TotalPages 1 }}
+    <ul class="pagination">
+      {{ if $pages.HasPrev }}<li><a href="{{ $pages.Prev.URL }}" rel="prev">‹ Précédent</a></li>{{ end }}
+      {{ range $pages.Pagers }}<li{{ if eq . $pages }} class="active"{{ end }}><a href="{{ .URL }}">{{ .PageNumber }}</a></li>{{ end }}
+      {{ if $pages.HasNext }}<li><a href="{{ $pages.Next.URL }}" rel="next">Suivant ›</a></li>{{ end }}
+    </ul>
+    {{ end }}
+    <div class="cta-article espace-haut-l">
+      <div>
+        <h2>Un logement impeccable, à chaque rotation</h2>
+        <p>Ménage Airbnb, linge, fin de bail, bureaux ou copropriété : simulez votre prestation et recevez un devis en deux minutes.</p>
+      </div>
+      <button class="btn btn-vert" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+    </div>
+  </div>
+</div>
+{{ end }}

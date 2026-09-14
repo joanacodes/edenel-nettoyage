@@ -1,0 +1,7 @@
+{{- /* Carte d'article de blog (accueil + liste) */ -}}
+<a class="blog-carte" href="{{ .RelPermalink }}">
+  {{ with index (.Params.tags | default slice) 0 }}<span class="etiquette">{{ . }}</span>{{ end }}
+  <h3>{{ .Title }}</h3>
+  <p>{{ .Description | default .Summary | plainify | truncate 150 }}</p>
+  <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date | time.Format ":date_long" }} · {{ .ReadingTime }} min de lecture</time>
+</a>

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: {{ "/merci/" | relURL }}
+
+Sitemap: {{ "sitemap.xml" | absURL }}

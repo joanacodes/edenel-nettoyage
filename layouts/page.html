@@ -1,0 +1,30 @@
+{{ define "main" }}
+<div class="page-entete">
+  <div class="wrap">
+    {{ partial "ariane.html" . }}
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.chapo | default .Description }}<p class="chapo">{{ . | safeHTML }}</p>{{ end }}
+  </div>
+</div>
+<div class="page-corps">
+  <div class="wrap{{ if .Params.encart }} page-grille{{ end }}">
+    <article class="{{ .Params.classe | default "prose" }}">
+      {{ with .Params.meta }}<p class="meta">{{ . | safeHTML }}</p>{{ end }}
+      {{ .Content }}
+    </article>
+    {{ if .Params.encart }}
+    <aside class="encart">
+      <h3>Devis gratuit en 2 minutes</h3>
+      <p>Simulez votre prestation, ajoutez-la au panier ou recevez un devis PDF par email — sans engagement.</p>
+      <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+      <button class="btn btn-ligne" type="button" onclick="ouvrirRdv()">Prendre rendez-vous</button>
+      <ul>
+        <li><span class="puce-chev"></span>7j/7, dimanches et jours fériés compris</li>
+        <li><span class="puce-chev"></span>Assurance RC professionnelle</li>
+        <li><span class="puce-chev"></span>Compte-rendu photos après chaque passage</li>
+      </ul>
+    </aside>
+    {{ end }}
+  </div>
+</div>
+{{ end }}

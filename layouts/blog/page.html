@@ -1,0 +1,61 @@
+{{ define "main" }}
+<article>
+  <div class="article-entete">
+    <div class="wrap">
+      {{ partial "ariane.html" . }}
+      <h1>{{ .Title }}</h1>
+      <div class="meta">
+        {{ range .Params.tags }}<span class="etiquette">{{ . }}</span>{{ end }}
+        <time datetime="{{ .Date.Format "2006-01-02" }}">Publié le {{ .Date | time.Format ":date_long" }}</time>
+        {{ if ne (.Lastmod.Format "2006-01-02") (.Date.Format "2006-01-02") }}<span>Mis à jour le {{ .Lastmod | time.Format ":date_long" }}</span>{{ end }}
+        <span>{{ .ReadingTime }} min de lecture</span>
+      </div>
+    </div>
+  </div>
+  <div class="article-corps">
+    <div class="wrap page-grille">
+      <div>
+        <div class="prose">
+          {{ .Content }}
+        </div>
+        <div class="sig-article" aria-label="{{ site.Params.marqueCourte }}, {{ site.Params.filiation }}">
+          {{ partial "logo.html" }}
+          <div>
+            <span class="sb-nom">EDENEL</span>
+            <span class="sb-sous">Nettoyage&nbsp;Pro</span>
+          </div>
+          <span class="sb-marque">une marque de <b>EDENEL PATRIMOINE GESTION</b></span>
+        </div>
+        <div class="cta-article">
+          <div>
+            <h2>Besoin d'un ménage professionnel ?</h2>
+            <p>Simulez votre prestation en deux minutes : tarifs HT transparents, devis PDF, réservation 7j/7 à Paris et en Île-de-France.</p>
+          </div>
+          <button class="btn btn-vert" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+        </div>
+      </div>
+      <aside class="encart">
+        <h3>Devis gratuit en 2 minutes</h3>
+        <p>Ménage Airbnb, linge, fin de bail, bureaux ou copropriété — sans engagement.</p>
+        <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+        <button class="btn btn-ligne" type="button" onclick="ouvrirRdv()">Prendre rendez-vous</button>
+        <ul>
+          <li><span class="puce-chev"></span>7j/7, dimanches et jours fériés compris</li>
+          <li><span class="puce-chev"></span>Assurance RC professionnelle</li>
+          <li><span class="puce-chev"></span>Compte-rendu photos après chaque passage</li>
+        </ul>
+      </aside>
+    </div>
+    {{ $lies := first 3 (where (where site.RegularPages "Section" "blog") "Permalink" "ne" .Permalink) }}
+    {{ with .Site.RegularPages.Related . | first 3 }}{{ $lies = . }}{{ end }}
+    {{ with $lies }}
+    <div class="wrap lire-aussi">
+      <h2>Lire aussi</h2>
+      <div class="blog-grille espace-haut">
+        {{ range . }}{{ partial "carte-article.html" . }}{{ end }}
+      </div>
+    </div>
+    {{ end }}
+  </div>
+</article>
+{{ end }}

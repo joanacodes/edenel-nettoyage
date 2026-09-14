@@ -1,0 +1,11 @@
+# Sortie de build Hugo
+/public/
+/resources/_gen/
+.hugo_build.lock
+
+# Système / éditeurs
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+node_modules/

@@ -1,0 +1,45 @@
+# =====================================================================
+#  FAQ — affichée sur la page d'accueil et déclarée en JSON-LD (FAQPage)
+#  « reponseHtml » : affiché sur le site (HTML léger autorisé)
+#  « reponse »     : version texte brut pour le JSON-LD Google
+# =====================================================================
+
+- question: "Quel est le tarif d'un ménage Airbnb à Paris ?"
+  reponseHtml: "Notre taux horaire de base est de <strong>28 € HT de l'heure</strong> pour une intervention planifiée (4 jours ou plus à l'avance). Le tarif varie ensuite selon le délai de réservation, et nos forfaits par type de logement (studio à T5) rendent vos frais de ménage prévisibles. Dès votre 5ᵉ commande, vous devenez automatiquement Client Fidèle et bénéficiez de <strong>−8 % à vie</strong>."
+  reponse: "Notre taux horaire de base est de 28 € HT de l'heure pour un ménage planifié. Le tarif varie selon le délai de réservation, et des forfaits par type de logement (studio à T5) sont proposés, avec un Tarif Fidélité à −8 % à vie dès la 5e commande."
+
+- question: "Faites-vous le ménage entre deux locations, le jour même ?"
+  reponseHtml: "Oui. Nous intervenons entre le check-out et le check-in de vos voyageurs, <strong>7 jours sur 7</strong>, y compris en dernière minute et le jour même (commande avant 11 h 30, selon disponibilité). Vous nous indiquez les horaires, le logement est prêt pour l'arrivée suivante."
+  reponse: "Oui. Nous intervenons entre le check-out et le check-in de vos voyageurs, 7 jours sur 7, y compris en dernière minute et le jour même (commande avant 11 h 30, selon disponibilité)."
+
+- question: "Gérez-vous le linge de ma location saisonnière ?"
+  reponseHtml: "Oui : <strong>lavage, séchage et repassage</strong> du linge de maison, changement des draps et serviettes, lit fait « qualité hôtel ». Notre <strong>Formule Airbnb</strong> combine ménage et linge en une seule intervention, pour un logement à l'identique de vos photos d'annonce."
+  reponse: "Oui : lavage, séchage et repassage du linge de maison, changement des draps et serviettes, lit fait qualité hôtel. Notre Formule Airbnb combine ménage et linge en une seule intervention."
+
+- question: "Intervenez-vous le dimanche et les jours fériés ?"
+  reponseHtml: "Oui, nous intervenons 7j/7, dimanches et jours fériés compris (majoration de 10 %), à Paris, dans le Val-de-Marne et dans toute l'Île-de-France."
+  reponse: "Oui, nous intervenons 7j/7, dimanches et jours fériés compris, avec une majoration de 10 %."
+
+- question: "Travaillez-vous avec les conciergeries Airbnb ?"
+  reponseHtml: "Oui. Nous assurons le <strong>ménage en sous-traitance pour les conciergeries</strong> et gestionnaires de locations courte durée, avec un engagement de non-sollicitation de leurs clients, une checklist qualité et un compte-rendu photos après chaque intervention."
+  reponse: "Oui. Nous assurons le ménage en sous-traitance pour les conciergeries et gestionnaires de locations courte durée, avec un engagement de non-sollicitation de leurs clients."
+
+- question: "Comment se passe la remise des clés de ma location Airbnb ?"
+  reponseHtml: "Comme vous le souhaitez : <strong>boîte à clés</strong>, serrure connectée, gardien ou remise en main propre. Les codes d'accès sont traités avec une stricte confidentialité, réservés aux seules intervenantes affectées à votre logement — c'est un engagement écrit de nos CGV."
+  reponse: "Comme vous le souhaitez : boîte à clés, serrure connectée, gardien ou remise en main propre. Les codes d'accès sont traités avec une stricte confidentialité, réservés aux seules intervenantes affectées à votre logement."
+
+- question: "Que se passe-t-il si un voyageur laisse le logement très sale ou dégradé ?"
+  reponseHtml: "Nos intervenantes réalisent un <strong>état des lieux photographique</strong> à chaque passage : toute salissure exceptionnelle ou dégradation est photographiée, horodatée et vous est signalée immédiatement — des preuves directement utilisables pour votre réclamation AirCover ou votre caution. Si un temps de nettoyage supplémentaire est nécessaire, nous vous prévenons avant d'engager les heures."
+  reponse: "Nos intervenantes réalisent un état des lieux photographique à chaque passage : toute salissure exceptionnelle ou dégradation est photographiée, horodatée et vous est signalée immédiatement. Si un temps de nettoyage supplémentaire est nécessaire, nous vous prévenons avant d'engager les heures."
+
+- question: "Hôtels : pouvez-vous renforcer nos équipes d'étage en haute saison ?"
+  reponseHtml: "Oui, c'est l'un de nos trois formats : <strong>renfort ponctuel</strong> de vos femmes de chambre (pics, absences, saisonnalité), sous-traitance d'un étage ou d'un créneau, ou externalisation complète du service. Recouche et mise à blanc selon vos protocoles ou les nôtres, contrôle gouvernante conservé, 7j/7."
+  reponse: "Oui : renfort ponctuel de femmes de chambre, sous-traitance d'un étage ou externalisation complète du service, avec recouche et mise à blanc au standard hôtelier, 7j/7."
+
+- question: "Syndics : comment obtenir un devis pour l'entretien de notre immeuble ?"
+  reponseHtml: "En deux minutes : ouvrez le simulateur (« Combien ça coûte ? »), onglet <strong>Copropriétés</strong>, indiquez la taille de l'immeuble et vos options (containers, vitrerie) — vous obtenez une estimation mensuelle immédiate et un <strong>devis PDF présentable en conseil syndical ou en AG</strong>. La visite de l'immeuble est gratuite, et le remplacement d'intervenant est garanti en cas d'absence."
+  reponse: "Via le simulateur en ligne, onglet Copropriétés : estimation mensuelle immédiate selon la taille de l'immeuble et les options, puis devis PDF présentable en conseil syndical ou en assemblée générale. Visite gratuite de l'immeuble."
+
+- question: "Bureaux : intervenez-vous en dehors de nos horaires de travail, et vos intervenants sont-ils assurés ?"
+  reponseHtml: "Oui : passages <strong>tôt le matin, le soir ou le week-end</strong>, sans gêner vos équipes, à la fréquence de votre choix. Nos intervenant(e)s sont couverts par notre assurance <strong>RC professionnelle</strong>, suivent une checklist signée à chaque passage, et vous disposez d'un interlocuteur unique — ce que les responsables des services généraux nous disent apprécier le plus."
+  reponse: "Oui, tôt le matin, le soir ou le week-end, à la fréquence de votre choix, avec assurance RC professionnelle, checklist signée à chaque passage et interlocuteur unique."

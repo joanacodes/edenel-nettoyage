@@ -1,0 +1,255 @@
+{{ define "main" }}
+{{- $a := hugo.Data.accueil -}}
+{{- $t := hugo.Data.tarifs -}}
+{{- $home := "/" | relLangURL -}}
+{{- $tarifs := site.GetPage "/tarifs" -}}
+
+<!-- ======= HERO ======= -->
+<div class="hero">
+  <svg class="hero-chevrons" viewBox="0 0 600 600" aria-hidden="true">
+    <path d="M60 300 L300 120 L540 300" fill="none" stroke="#1E8CA8" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" opacity=".16"/>
+    <path d="M140 430 L300 310 L460 430" fill="none" stroke="#3EBD8E" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" opacity=".2"/>
+  </svg>
+  <div class="wrap hero-grille">
+    <div class="fade">
+      <span class="eyebrow">{{ $a.hero.eyebrow | safeHTML }}</span>
+      <h1>{{ $a.hero.titre | safeHTML }}</h1>
+      <p class="accroche">{{ $a.hero.accroche | safeHTML }}</p>
+      <div class="hero-ctas">
+        <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">{{ $a.hero.ctaPrincipal }}</button>
+        <a class="btn btn-ligne" href="#prestations">{{ $a.hero.ctaSecondaire }}</a>
+      </div>
+      <p class="hero-note clignote">{{ $a.hero.note | safeHTML }}</p>
+    </div>
+
+    <div class="cartes-hero fade" aria-hidden="true">
+      <div class="carte carte-check">
+        <h3><span class="puce-chev"></span>{{ $a.hero.checklist.titre }}</h3>
+        <ul>
+          {{ range $a.hero.checklist.items }}<li><span class="puce-chev"></span>{{ . | safeHTML }}</li>
+          {{ end }}
+        </ul>
+      </div>
+      <div class="carte carte-notif">
+        <div class="notif-ico">{{ partial "icone.html" "appareil" }}</div>
+        <div>
+          <strong>{{ $a.hero.notif.titre }}</strong>
+          <span>{{ $a.hero.notif.texte }}</span>
+        </div>
+      </div>
+      <div class="carte carte-achats">
+        <div class="notif-ico">{{ partial "icone.html" "ticket" }}</div>
+        <div>
+          <strong>{{ $a.hero.achats.titre }}</strong>
+          <span class="txt">{{ $a.hero.achats.texte }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======= BANDE RÉASSURANCE ======= -->
+<div class="bande" role="list" aria-label="Nos garanties">
+  <div class="wrap">
+    {{ range $a.garanties }}
+    <div class="bande-item" role="listitem">
+      {{ partial "icone.html" .icone }}
+      <div><strong>{{ .titre }}</strong>{{ .texte | safeHTML }}</div>
+    </div>
+    {{ end }}
+  </div>
+</div>
+
+<!-- ======= NOTRE EXPÉRIENCE ======= -->
+<section class="manifeste" id="experience">
+  <div class="wrap manifeste-grille">
+    <div>
+      <span class="eyebrow">{{ $a.experience.eyebrow }}</span>
+      <h2>{{ $a.experience.titre }}</h2>
+      <div class="manifeste-chiffres">
+        {{ range $a.experience.chiffres }}<div class="chiffre"><b>{{ .valeur }}</b><small>{{ .texte }}</small></div>
+        {{ end }}
+      </div>
+    </div>
+    <div>
+      <div class="manifeste-txt"><p>{{ $a.experience.texte | safeHTML }}</p></div>
+      <div class="manifeste-sign"><span class="trait"></span><span>{{ $a.experience.signature }}</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= PRESTATIONS ======= -->
+<section class="prestations" id="prestations">
+  <div class="wrap">
+    <span class="eyebrow">{{ $a.prestations.eyebrow }}</span>
+    <h2>{{ $a.prestations.titre }}</h2>
+    <div class="grille-cartes">
+      {{ range $a.prestations.liste }}
+      <div class="presta" id="{{ .id }}">
+        <div class="ico">{{ partial "icone.html" .icone }}</div>
+        <h3>{{ .titre | safeHTML }}</h3>
+        <p>{{ .texte | safeHTML }}{{ if .rdv }} <a href="#contact" class="lien" onclick="ouvrirRdv();return false">Prenez rendez-vous</a> pour en savoir plus.{{ end }}</p>
+        {{ with .page }}{{ with site.GetPage . }}<a class="lire" href="{{ .RelPermalink }}">En savoir plus : {{ .Params.menu | default .Title }} →</a>{{ end }}{{ end }}
+      </div>
+      {{ end }}
+    </div>
+
+    <span class="eyebrow espace-haut-l">{{ $a.autres.eyebrow }}</span>
+    <h2>{{ $a.autres.titre }}</h2>
+    <div class="grille-cartes auto">
+      {{ range $a.autres.liste }}
+      <div class="presta" id="{{ .id }}">
+        <div class="ico">{{ partial "icone.html" .icone }}</div>
+        <h3>{{ .titre | safeHTML }}</h3>
+        <p>{{ .texte | safeHTML }}{{ if .rdv }} <a href="#contact" class="lien" onclick="ouvrirRdv();return false">Prenez rendez-vous</a> pour en savoir plus.{{ end }}</p>
+        {{ with .page }}{{ with site.GetPage . }}<a class="lire" href="{{ .RelPermalink }}">En savoir plus : {{ .Params.menu | default .Title }} →</a>{{ end }}{{ end }}
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- ======= COMMENT ÇA MARCHE ======= -->
+<section id="comment-ca-marche">
+  <div class="wrap">
+    <span class="eyebrow">{{ $a.etapes.eyebrow }}</span>
+    <h2>{{ $a.etapes.titre }}</h2>
+    <div class="etapes-grille">
+      {{ range $i, $e := $a.etapes.liste }}
+      <div class="etape">
+        <div class="num">{{ add $i 1 }}</div>
+        <h3>{{ $e.titre }}</h3>
+        <p>{{ $e.texte | safeHTML }}</p>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- ======= ZONE + TARIFS ======= -->
+<section class="zone" id="zone">
+  <div class="wrap zone-grille">
+    <div>
+      <span class="eyebrow">{{ $a.zone.eyebrow }}</span>
+      <h2>{{ $a.zone.titre }}</h2>
+      <p>{{ $a.zone.texte | safeHTML }}</p>
+      <div class="chips">
+        {{ range $a.zone.chips }}<span class="chip">{{ . }}</span>
+        {{ end }}
+      </div>
+    </div>
+    <div class="tarif-carte" id="tarifs">
+      <span class="eyebrow">{{ $a.zone.tarif.eyebrow }}</span>
+      <p class="apartir">à partir de {{ $t.base }}&nbsp;€<small> HT/heure</small></p>
+      <ul>
+        {{ range $a.zone.tarif.points }}<li><span class="puce-chev"></span>{{ . | safeHTML }}</li>
+        {{ end }}
+      </ul>
+      {{ with $tarifs }}<a class="btn btn-plein" href="{{ .RelPermalink }}">{{ $a.zone.tarif.cta }}</a>{{ else }}<a class="btn btn-plein" href="#contact">{{ $a.zone.tarif.cta }}</a>{{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- ======= SECTION SEO ======= -->
+<section class="zone" id="menage-airbnb">
+  <div class="wrap">
+    <span class="eyebrow">{{ $a.seo.eyebrow | safeHTML }}</span>
+    <h2>{{ $a.seo.titre }}</h2>
+    <div class="seo-txt">
+      {{ range $i, $p := $a.seo.paragraphes }}<p>{{ $p | safeHTML }}{{ if eq $i (sub (len $a.seo.paragraphes) 1) }} <a href="#contact" class="lien" onclick="ouvrirRdv();return false">Prenez rendez-vous</a> pour en savoir plus.{{ end }}</p>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- ======= FAQ ======= -->
+<section class="faq" id="faq">
+  <div class="wrap">
+    <span class="eyebrow">{{ $a.faqSection.eyebrow }}</span>
+    <h2>{{ $a.faqSection.titre }}</h2>
+    {{ range hugo.Data.faq }}
+    <details>
+      <summary>{{ .question }}</summary>
+      <p>{{ .reponseHtml | safeHTML }}</p>
+    </details>
+    {{ end }}
+  </div>
+</section>
+
+<!-- ======= AVIS CLIENTS ======= -->
+<section class="zone" id="avis">
+  <div class="wrap">
+    <span class="eyebrow">{{ $a.avisSection.eyebrow }}</span>
+    <h2>{{ $a.avisSection.titre }}</h2>
+    <div class="avis-grille">
+      {{ range hugo.Data.avis }}
+      <div class="avis">
+        <span class="profil">{{ .profil }}</span>
+        <span class="etoiles" aria-label="5 étoiles sur 5">★★★★★</span>
+        <p>« {{ .texte }} »</p>
+        <span class="auteur">{{ .auteur }}</span>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- ======= BLOG ======= -->
+{{ with site.GetPage "/blog" }}
+{{ $articles := first 6 .RegularPages }}
+{{ if $articles }}
+<section class="prestations blanc" id="blog">
+  <div class="wrap">
+    <span class="eyebrow">{{ $a.blogSection.eyebrow }}</span>
+    <h2>{{ $a.blogSection.titre }}</h2>
+    <div class="blog-grille">
+      {{ range $articles }}{{ partial "carte-article.html" . }}{{ end }}
+    </div>
+    <div class="section-actions">
+      <a class="btn btn-ligne" href="{{ .RelPermalink }}">{{ $a.blogSection.cta }} ({{ len .RegularPages }})</a>
+    </div>
+  </div>
+</section>
+{{ end }}
+{{ end }}
+
+<!-- ======= CONTACT ======= -->
+<section class="contact" id="contact">
+  <div class="wrap contact-grille">
+    <div>
+      <span class="eyebrow">{{ $a.contact.eyebrow }}</span>
+      <h2>{{ $a.contact.titre | safeHTML }}</h2>
+      <p class="grand">{{ $a.contact.texte | safeHTML }}</p>
+    </div>
+    <form id="form-contact" action="https://formsubmit.co/{{ site.Params.formsubmit }}" method="POST" aria-label="Formulaire de demande de devis">
+      <button class="form-fermer" type="button" aria-label="Fermer le formulaire" onclick="fermerFormContact()">✕</button>
+      <input type="hidden" name="_subject" value="Nouvelle demande de devis — {{ site.Params.marque }}">
+      <input type="hidden" name="_template" value="table">
+      <input type="hidden" name="_language" value="fr">
+      {{ with site.GetPage "/merci" }}<input type="hidden" name="_next" value="{{ .Permalink }}">{{ end }}
+      <input type="text" name="_honey" class="cache" tabindex="-1" autocomplete="off">
+      <div class="champ">
+        <label for="nom">Votre nom</label>
+        <input id="nom" name="Nom" type="text" required placeholder="Ex. : Marie Dupont" autocomplete="name">
+      </div>
+      <div class="champ">
+        <label for="email">Email <span class="req">*</span></label>
+        <input id="email" name="email" type="email" required placeholder="Ex. : marie@exemple.fr" autocomplete="email">
+      </div>
+      <div class="champ">
+        <label for="logement">Type de logement ou de locaux</label>
+        <select id="logement" name="Type de logement">
+          {{ range $a.contact.logements }}<option>{{ . }}</option>
+          {{ end }}
+        </select>
+      </div>
+      <div class="champ">
+        <label for="msg">Votre besoin</label>
+        <textarea id="msg" name="Votre besoin" rows="3" placeholder="Ex. : rotations Airbnb 2 à 3 fois par semaine, linge inclus, Paris 12ᵉ…"></textarea>
+      </div>
+      <button class="btn btn-plein" type="submit">Envoyer ma demande</button>
+      <p class="maquette-note" id="note-maquette">Vos coordonnées ne servent qu'à vous répondre. Réponse sous 24 h.</p>
+    </form>
+  </div>
+</section>
+{{ end }}

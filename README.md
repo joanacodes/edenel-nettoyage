@@ -66,17 +66,32 @@ draft: false
 
 Le slug (URL) est le nom du fichier : `content/blog/menage-airbnb-paris-15.md` → `/blog/menage-airbnb-paris-15/`. Les 15 articles actuels reprennent le contenu de l'ancien site ; ils peuvent être enrichis ou remplacés par les 30 articles de 1 000 mots prévus.
 
-## 4. À renseigner avant la mise en ligne
+## 4. Réservations, commandes et agendas — sans aucun compte à connecter
+
+Le site fonctionne **sans serveur et sans API** : rien à brancher, rien à payer.
+
+**Rendez-vous** (« Prendre rendez-vous ») : le client choisit un jour et un créneau, laisse son nom, son mobile et son email, puis confirme.
+1. La société reçoit un email d'alerte (FormSubmit) avec les coordonnées **et un lien « Ajouter à l'agenda EDENEL » en un clic** — l'événement se crée dans le Google Agenda de la société.
+2. Le client reçoit un email de confirmation avec le même type de lien pour **son** agenda.
+3. À l'écran, le client voit immédiatement deux boutons : « Ajouter à Google Agenda » et « Fichier .ics » (Apple Calendar, Outlook).
+
+**Commandes** (« Passer commande » → panier → « Valider ma commande » → « Confirmer ma commande ») : même mécanique. La société reçoit le détail (prestations, date, adresse, total, n° client) avec le lien agenda ; le client reçoit un récapitulatif avec le sien. Le règlement se fait à réception de la facture. Si vous renseignez `lienStripe` ou `lienPaypal` dans `hugo.toml`, un paiement en ligne immédiat s'ajoute en option.
+
+Ce qu'il faut savoir : le créneau demandé est une **demande**, pas une réservation ferme — le site ne connaît pas l'agenda réel de la société, donc c'est la société qui confirme par téléphone (c'est écrit au client). Pour une vérification automatique des disponibilités, il faudrait connecter un outil de réservation (Cal.com ou les plages de rendez-vous Google) via le paramètre `calendrierExterne` — prêt à l'emploi si vous changez d'avis.
+
+**Devis, factures, historique** : tous les documents sont générés dans le navigateur en **vrais fichiers PDF** téléchargés (bibliothèque jsPDF hébergée sur le site, chargée uniquement au clic). Aucune fenêtre pop-up, donc aucun blocage par les navigateurs.
+
+## 5. À renseigner avant la mise en ligne
 
 Dans `hugo.toml` :
 
-- `formsubmit` : l'adresse email qui reçoit les formulaires (**FormSubmit envoie un email d'activation lors du premier envoi : cliquez sur le lien pour activer**).
+- `formsubmit` : l'adresse email qui reçoit les formulaires. ⚠ **Indispensable : lors du tout premier envoi depuis le site en ligne, FormSubmit envoie un email d'activation à cette adresse — tant que le lien n'est pas cliqué, aucun formulaire, rendez-vous ni commande n'arrive.** Faites un premier envoi test vous-même juste après la mise en ligne.
 - `telephone` : numéro affiché dans le pied de page et le JSON-LD (laisser vide pour ne rien afficher).
-- `lienStripe`, `lienPaypal` : liens de paiement (Payment Link Stripe, bouton PayPal.me) — tant qu'ils sont vides, le bouton de paiement affiche un rappel.
+- `lienStripe`, `lienPaypal` : facultatifs. Liens de paiement (Payment Link Stripe, bouton PayPal.me) — tant qu'ils sont vides, la commande se confirme par email avec règlement à réception de facture ; dès qu'un lien est renseigné, le paiement en ligne apparaît en option.
 - `calendrierExterne` : URL Calendly / Google Agenda si vous préférez un agenda externe au calendrier intégré.
 - `codeInterne` : code de l'onglet « générer la facture ». ⚠ Ce code est lisible dans le JavaScript public ; il évite les erreurs de manipulation mais n'est pas une protection de sécurité. Pour une vraie facturation en ligne, utilisez un outil dédié.
 
-## 5. Structure du projet
+## 6. Structure du projet
 
 ```
 hugo.toml                 configuration, paramètres, mentions légales
@@ -90,7 +105,7 @@ static/                   polices, favicons, image OG, manifest
 .github/workflows/        déploiement GitHub Pages
 ```
 
-## 6. Vérifications SEO après publication
+## 7. Vérifications SEO après publication
 
 1. Google Search Console : ajouter la propriété, soumettre `sitemap.xml`.
 2. Tester les données structurées : https://search.google.com/test/rich-results (LocalBusiness, FAQ, Service, BlogPosting).

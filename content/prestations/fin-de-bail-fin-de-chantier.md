@@ -56,4 +56,4 @@ Avant la haute saison, offrez à votre logement ce que les rotations ne permette
 
 ## Comment commander
 
-Choisissez « Ménage fin de bail » ou « Ménage fin de chantier » dans le simulateur, indiquez le type de logement, la date souhaitée et l'adresse : le nombre d'heures minimum, le taux horaire selon le délai et les suppléments (déplacement, produits d'entretien) sont appliqués automatiquement. Pour un T6 et plus, ou un local atypique, [prenez rendez-vous](/#contact) pour un devis.
+Choisissez « Ménage fin de bail » ou « Ménage fin de chantier » dans le simulateur, indiquez le type de logement, la date souhaitée et l'adresse : le nombre d'heures minimum, le taux horaire selon le délai et les suppléments (déplacement, produits d'entretien) sont appliqués automatiquement. Pour un T6 et plus, ou un local atypique, [prenez rendez-vous](/contact/) pour un devis.

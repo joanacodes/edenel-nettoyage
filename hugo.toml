@@ -71,14 +71,14 @@ disableKinds = ["taxonomy", "term"]   # pas de pages /tags/ pour l'instant (réa
   marque = "EDENEL NETTOYAGE PROFESSIONNEL"
   marqueCourte = "EDENEL NETTOYAGE PRO"
   filiation = "Une marque de EDENEL PATRIMOINE GESTION"
-  email = "edenelpatrimoine@gmail.com"
+  email = "contact@edenelnettoyage.fr"
   telephone = ""                       # ex. "+33 6 12 34 56 78" (affiché dans le pied de page et le JSON-LD si renseigné)
   ogImage = "og-image.png"             # image de partage (1200×630) dans /static/
   zone = ["Paris", "Val-de-Marne", "Île-de-France"]
   horaires = "Mo-Su 08:00-20:00"
 
   # Formulaires (FormSubmit) — l'adresse doit être activée une première fois (email de confirmation FormSubmit)
-  formsubmit = "edenelpatrimoine@gmail.com"
+  formsubmit = "contact@edenelnettoyage.fr"
 
   # Liens de paiement — à coller quand vos comptes Stripe / PayPal sont prêts
   lienStripe = ""

@@ -205,7 +205,7 @@ function itemCourant(){
       + (d.suppTxt.length ? " · " + d.suppTxt.join(" + ") : "")
       + (d.prodOk ? " · produits d'entretien fournis sur place" : "")
       + (d.opt > 0 ? " · option produits de toilette" : ""),
-    date: d.dateStr, adresse: adresse,
+    date: d.dateStr, heure: el("bc-heure").value, h: d.h, adresse: adresse,
     commentaire: el("bc-comment").value.trim(),
     ht: r2(d.ht - DEPL_HT)   /* le déplacement est compté par commande (date + adresse) dans le panier */
   };
@@ -251,7 +251,6 @@ function majPanier(){
   el("p-ht").textContent = eur(ht);
   el("p-tva").textContent = eur(tva);
   el("p-ttc").textContent = eur(ttc);
-  el("paiement-montant").textContent = n > 0 ? "Total à régler : " + eur(ttc) + " TTC — choisissez votre mode de paiement sécurisé :" : "Choisissez votre mode de paiement sécurisé :";
 }
 function retirer(i){ panier.splice(i, 1); majPanier(); }
 
@@ -276,8 +275,9 @@ function ouvrirCommande(simu){
 function fermerCommande(){ fermer("modal-commande"); }
 function ouvrirPanier(){ majPanier(); ouvrir("modal-panier"); }
 function fermerPanier(){ fermer("modal-panier"); }
+var derniereCommande = null;
 function ouvrirPaiement(){
-  if(panier.length === 0){ el("liste-panier").innerHTML = '<p class="panier-vide">⚠ Ajoutez au moins une prestation avant de payer.</p>'; return; }
+  if(panier.length === 0){ el("liste-panier").innerHTML = '<p class="panier-vide">⚠ Ajoutez au moins une prestation avant de commander.</p>'; return; }
   if(!lireJSON(COMPTE_KEY)){
     el("liste-panier").innerHTML = '<p class="panier-vide">⚠ Pour passer commande (et cumuler vos commandes vers le Tarif Fidélité −8 %), créez d\'abord votre compte dans l\'Espace client — il s\'ouvre à l\'instant.</p>';
     ouvrirCompte(); return;
@@ -285,9 +285,53 @@ function ouvrirPaiement(){
   if(!telNational(el("pan-tel").value)){
     note("pan-note", "⚠ Téléphone mobile obligatoire pour commander : choisissez l'indicatif pays puis saisissez votre numéro commençant par 0 (ex. : 0612345678).", ROUGE); return;
   }
-  var ref = enregistrerCommande();
-  if(ref){ el("paiement-montant").textContent = "Référence de commande : " + ref + " — " + el("paiement-montant").textContent; }
+  derniereCommande = enregistrerCommande();
+  el("paiement-montant").textContent = "Commande " + derniereCommande.id + " — total " + eur(derniereCommande.ttc) + " TTC";
+  el("paiement-choix").hidden = false; el("paiement-succes").hidden = true;
+  note("note-paiement", "", "");
   fermerPanier(); ouvrir("modal-paiement");
+}
+function confirmerCommande(){
+  var rec = derniereCommande;
+  if(!rec || panier.length === 0){ note("note-paiement", "⚠ Aucune commande en cours.", ROUGE); return; }
+  var compte = lireJSON(COMPTE_KEY) || {};
+  var tries = panier.slice().sort(function(a, b){ return (a.date || "") < (b.date || "") ? -1 : 1; });
+  var premier = tries[0];
+  var heure = premier.heure || "09:00";
+  var duree = Math.max(60, Math.round((premier.h || 2) * 60));
+  var detailsTxt = panier.map(function(it){ return "• " + it.titre + " — " + it.detail + " — le " + frDate(it.date) + (it.heure ? " à " + it.heure : "") + " — " + it.adresse; }).join("\n");
+  var evClient = {titre: "Intervention " + LEGAL.marque, date: premier.date, heure: heure, duree: duree, lieu: premier.adresse, uid: rec.id,
+    details: "Commande " + rec.id + "\n" + detailsTxt + "\nTotal : " + eur(rec.ttc) + " TTC\nL'heure exacte vous est confirmée par EDENEL."};
+  var evSociete = {titre: "Intervention — " + (compte.nom || "client") + " — " + rec.id, date: premier.date, heure: heure, duree: duree, lieu: premier.adresse, uid: rec.id + "-edenel",
+    details: "Client : " + (compte.nom || "") + " · " + (compte.email || "") + " · " + rec.tel + "\nN° client : " + (rec.numClient || "—") + "\n" + detailsTxt + "\nTotal : " + eur(rec.ht) + " HT / " + eur(rec.ttc) + " TTC"};
+  var lienClient = lienGoogleAgenda(evClient), lienSociete = lienGoogleAgenda(evSociete);
+  function succes(msg, couleur){
+    el("paiement-choix").hidden = true; el("paiement-succes").hidden = false;
+    el("paiement-recap").textContent = "Commande " + rec.id + " — " + eur(rec.ttc) + " TTC — intervention le " + frDate(premier.date) + " à " + heure + (tries.length > 1 ? " (+" + (tries.length - 1) + " autre(s))" : "");
+    boutonsAgenda("paiement-agenda", evClient, "intervention-edenel-" + rec.id + ".ics");
+    note("paiement-succes-note", msg, couleur || VERT);
+    panier = []; majPanier();
+  }
+  if(estLocal()){
+    location.href = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("COMMANDE " + rec.id) + "&body=" + encodeURIComponent(detailsTxt + "\nTotal : " + eur(rec.ttc) + " TTC\nAjouter à l'agenda : " + lienSociete);
+    succes("Mode test local : votre messagerie s'est ouverte avec la commande pré-remplie. En ligne, l'envoi est automatique."); return;
+  }
+  note("note-paiement", "Transmission de votre commande…", GRIS);
+  envoyerFormulaire({
+    _subject: "COMMANDE " + rec.id + " — " + (compte.nom || "") + " — " + eur(rec.ttc) + " TTC — le " + frDate(premier.date),
+    email: compte.email,
+    _autoresponse: "Bonjour " + (compte.nom || "") + ",\n\nVotre commande " + rec.id + " est bien enregistrée :\n\n" + detailsTxt + "\n\nTotal : " + eur(rec.ht) + " HT — " + eur(rec.ttc) + " TTC.\nNous vous confirmons l'heure exacte d'intervention. Règlement à réception de la facture, émise après votre bon de réception.\n\nAjoutez l'intervention à votre Google Agenda en un clic :\n" + lienClient + "\n\n" + LEGAL.marque + " — " + LEGAL.filiation + "\n" + LEGAL.email,
+    "Commande": rec.id,
+    "Client": (compte.nom || "") + " — " + (compte.email || "") + " — " + rec.tel,
+    "Numéro client": rec.numClient || "—",
+    "Prestations": detailsTxt,
+    "Total": eur(rec.ht) + " HT / " + eur(rec.ttc) + " TTC",
+    "AJOUTER À L'AGENDA EDENEL (1 clic)": lienSociete
+  }).then(function(){
+    succes("✓ Commande transmise. Un récapitulatif vient de vous être envoyé par email ; nous vous confirmons l'heure exacte d'intervention. Enregistrez-la dès maintenant :");
+  }).catch(function(){
+    succes("⚠ L'envoi automatique n'a pas abouti — contactez-nous à " + LEGAL.email + " avec la référence " + rec.id + ". Vous pouvez déjà enregistrer l'intervention :", ROUGE);
+  });
 }
 function fermerPaiement(){ fermer("modal-paiement"); }
 function ouvrirValidation(){ ouvrir("modal-validation"); }
@@ -316,6 +360,8 @@ function ouvrirRdv(){
   } else {
     var t = new Date(); calAnnee = t.getFullYear(); calMois = t.getMonth();
     rdvDate = null; rdvHeure = null; dessinerCal();
+    el("rdv-interne").hidden = false; el("rdv-succes").hidden = true; el("creneaux").hidden = true;
+    note("rdv-note", "Rendez-vous téléphonique ou sur site, 7j/7 — sans engagement.", "");
   }
   ouvrir("modal-rdv");
 }
@@ -352,75 +398,236 @@ function choisirHeure(btn, h){
 }
 function envoyerRdv(){
   var nom = el("rdv-nom").value.trim(), rdvEmail = el("rdv-email").value.trim();
-  var contact = el("rdv-indicatif").value + " " + el("rdv-tel").value.trim() + (rdvEmail ? " · " + rdvEmail : "");
+  var tel = el("rdv-indicatif").value + " " + el("rdv-tel").value.trim();
+  var contact = tel + (rdvEmail ? " · " + rdvEmail : "");
   if(!rdvDate){ note("rdv-note", "⚠ Merci de choisir une date dans le calendrier.", ROUGE); return; }
   if(!rdvHeure){ note("rdv-note", "⚠ Merci de choisir un créneau horaire.", ROUGE); return; }
   if(!nom){ note("rdv-note", "⚠ Merci d'indiquer votre nom.", ROUGE); return; }
   if(!telNational(el("rdv-tel").value)){ note("rdv-note", "⚠ Téléphone mobile obligatoire pour un rendez-vous : indicatif pays puis numéro commençant par 0 (ex. : 0612345678).", ROUGE); return; }
   if(rdvEmail.indexOf("@") < 1){ note("rdv-note", "⚠ Email obligatoire pour recevoir la confirmation du rendez-vous.", ROUGE); return; }
   var dateFr = dateLongue(rdvDate);
+  var uid = "rdv-" + rdvDate + "-" + rdvHeure.replace(":", "") + "-" + Math.floor(100 + Math.random() * 900);
+  var evClient = {titre: "Rendez-vous " + LEGAL.marque, date: rdvDate, heure: rdvHeure, duree: RDV_DUREE_MIN, uid: uid,
+    details: "Rendez-vous téléphonique ou sur site avec " + LEGAL.marque + ".\nNous vous rappelons pour confirmer.\nContact : " + LEGAL.email};
+  var evSociete = {titre: "RDV client — " + nom + " (" + tel + ")", date: rdvDate, heure: rdvHeure, duree: RDV_DUREE_MIN, uid: uid + "-edenel",
+    details: "Demande de rendez-vous reçue depuis le site.\nClient : " + nom + "\nContact : " + contact + "\nÀ rappeler pour confirmer."};
+  var lienClient = lienGoogleAgenda(evClient), lienSociete = lienGoogleAgenda(evSociete);
+  function succes(msg, couleur){
+    el("rdv-recap").textContent = dateFr + " à " + rdvHeure + " — " + nom;
+    boutonsAgenda("rdv-agenda", evClient, "rendez-vous-edenel-" + rdvDate + ".ics");
+    el("rdv-interne").hidden = true; el("rdv-succes").hidden = false;
+    note("rdv-succes-note", msg, couleur || VERT);
+  }
   if(estLocal()){
     location.href = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("Demande de RENDEZ-VOUS — " + LEGAL.marque)
-      + "&body=" + encodeURIComponent("Rendez-vous souhaité : " + dateFr + " à " + rdvHeure + "\nNom : " + nom + "\nContact : " + contact);
-    note("rdv-note", "✓ Mode test local : votre logiciel de messagerie s'est ouvert avec la demande pré-remplie — cliquez sur Envoyer. Une fois le site en ligne, l'envoi est automatique.", VERT); return;
+      + "&body=" + encodeURIComponent("Rendez-vous souhaité : " + dateFr + " à " + rdvHeure + "\nNom : " + nom + "\nContact : " + contact + "\nAjouter à l'agenda : " + lienSociete);
+    succes("Mode test local : votre logiciel de messagerie s'est ouvert avec la demande pré-remplie. En ligne, l'envoi est automatique."); return;
   }
   note("rdv-note", "Envoi en cours…", GRIS);
   envoyerFormulaire({
-    _subject: "Demande de RENDEZ-VOUS — " + LEGAL.marque,
+    _subject: "RENDEZ-VOUS — " + dateFr + " à " + rdvHeure + " — " + nom,
     email: rdvEmail,
+    _autoresponse: "Bonjour " + nom + ",\n\nNous avons bien reçu votre demande de rendez-vous pour le " + dateFr + " à " + rdvHeure + ". Nous vous rappelons très vite au " + tel + " pour confirmer le créneau.\n\nAjoutez ce rendez-vous à votre Google Agenda en un clic :\n" + lienClient + "\n\nÀ très bientôt,\n" + LEGAL.marque + " — " + LEGAL.filiation + "\n" + LEGAL.email,
     "Rendez-vous demandé": dateFr + " à " + rdvHeure,
     "Nom": nom,
-    "Contact": contact
+    "Contact": contact,
+    "AJOUTER À L'AGENDA EDENEL (1 clic)": lienSociete
   }).then(function(){
-    note("rdv-note", "✓ Demande envoyée pour le " + dateFr + " à " + rdvHeure + " — nous vous recontactons très vite pour confirmer.", VERT);
+    succes("✓ Demande envoyée. Un email de confirmation vient de vous être adressé ; nous vous rappelons pour valider le créneau. Enregistrez-le dès maintenant dans votre agenda :");
   }).catch(function(){
-    note("rdv-note", "⚠ L'envoi automatique n'a pas abouti. Écrivez-nous directement : " + LEGAL.email + " en indiquant « RDV " + dateFr + " à " + rdvHeure + " ».", ROUGE);
+    succes("⚠ L'envoi automatique n'a pas abouti — écrivez-nous à " + LEGAL.email + " en indiquant « RDV " + dateFr + " à " + rdvHeure + " ». Vous pouvez déjà enregistrer le créneau :", ROUGE);
   });
 }
-
 /* ====== ENVOI DES FORMULAIRES (FormSubmit, mode AJAX) ====== */
 function envoyerFormulaire(charge){
   return fetch(FORMSUBMIT, {
     method: "POST",
     headers: {"Content-Type": "application/json", "Accept": "application/json"},
-    body: JSON.stringify(charge)
+    body: JSON.stringify(Object.assign({_captcha: "false"}, charge))
   }).then(function(r){ if(!r.ok) throw new Error("FormSubmit " + r.status); return r; });
 }
 
-/* ====== DOCUMENTS IMPRIMABLES (devis, facture, historique) ====== */
-function styleDocument(){
-  return 'body{font-family:Segoe UI,Arial,sans-serif;color:#3A4358;max-width:800px;margin:30px auto;padding:0 24px;font-size:14px;line-height:1.55}'
-    + '.tete{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid #3EBD8E;padding-bottom:18px}'
-    + '.m-nom{font-size:26px;font-weight:800;color:#1F2A70;letter-spacing:.02em}.m-sub{font-size:12px;font-weight:700;letter-spacing:.28em;color:#1E8CA8;text-transform:uppercase}'
-    + '.m-fil{font-size:11.5px;font-style:italic;color:#5A677C;margin-top:3px}'
-    + 'h1{font-size:20px;color:#1F2A70;margin:26px 0 4px}.meta{font-size:12.5px;color:#5A677C}'
-    + '.bloc{border:1px solid #DCE7EC;border-radius:10px;padding:12px 16px;margin-top:16px}'
-    + '.statut{display:inline-block;background:#E7F7F0;color:#1F7A55;font-weight:700;border-radius:999px;padding:5px 16px;font-size:12.5px;margin-top:12px}'
-    + 'table{width:100%;border-collapse:collapse;margin-top:18px}td,th{padding:10px 12px;border-bottom:1px solid #DCE7EC;text-align:left;vertical-align:top}'
-    + 'th{background:#1F2A70;color:#fff;font-size:12.5px}.mt{text-align:right;white-space:nowrap;font-weight:700;color:#1F2A70}.pt{font-size:12px;color:#5A677C}'
-    + '.tot td{border-bottom:0;padding:5px 12px}.ttc{font-size:16px;font-weight:800;color:#1F2A70;border-top:2px solid #3EBD8E}'
-    + '.legal{font-size:10.5px;color:#8A96AC;border-top:1px solid #DCE7EC;margin-top:26px;padding-top:12px}'
-    + '.cond{font-size:11.5px;color:#5A677C;margin-top:14px}.cond.encadre{border:1px solid #F4D8C4;background:#FCF6F0;border-radius:10px;padding:10px 14px}'
-    + '.imp{background:#1F2A70;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-weight:700;cursor:pointer;margin:18px 0}'
-    + 'tr:nth-child(even) td.hist{background:#F5F7FA}'
-    + '@media print{.imp{display:none}}';
+/* ====== AGENDA : « Ajouter à Google Agenda » (1 clic) et fichier .ics (Apple / Outlook) ====== */
+var RDV_DUREE_MIN = 30;
+function pad2(n){ return String(n).padStart(2, "0"); }
+function horodatage(dateStr, heureStr){ /* "2026-09-25" + "09:30" -> "20260925T093000" (heure de Paris) */
+  var h = (heureStr || "09:00").split(":");
+  return dateStr.replace(/-/g, "") + "T" + pad2(h[0]) + pad2(h[1] || 0) + "00";
 }
-function enteteDocument(){
-  return '<div class="tete"><div><svg width="54" height="54" viewBox="0 0 100 100"><path d="M12 46 L50 16 L88 46 L88 60 L50 30 L12 60 Z" fill="#1E8CA8"/><path d="M20 74 L44 55 L58 66 L58 78 L44 67 L20 86 Z" fill="#3EBD8E"/></svg></div>'
-    + '<div style="text-align:right"><div class="m-nom">EDENEL</div><div class="m-sub">Nettoyage Pro</div><div class="m-fil">' + LEGAL.filiation + '</div></div></div>';
+function ajouterMinutes(dateStr, heureStr, minutes){
+  var h = (heureStr || "09:00").split(":");
+  var d = new Date(dateStr + "T" + pad2(h[0]) + ":" + pad2(h[1] || 0) + ":00");
+  d.setMinutes(d.getMinutes() + minutes);
+  return {date: isoLocal(d), heure: pad2(d.getHours()) + ":" + pad2(d.getMinutes())};
 }
-function piedDocument(){
-  return '<div class="legal">' + LEGAL.marque + ' — ' + LEGAL.filiation + '<br>' + LEGAL.raison + ' · ' + LEGAL.forme + '<br>Siège social : ' + LEGAL.adresse + '<br>SIRET : ' + LEGAL.siret + ' · ' + LEGAL.rcs + ' · ' + LEGAL.ape + ' · TVA intracommunautaire : ' + LEGAL.tvaIntra + '<br>Contact : ' + LEGAL.email + '</div>';
+function lienGoogleAgenda(ev){
+  var fin = ajouterMinutes(ev.date, ev.heure, ev.duree);
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE"
+    + "&text=" + encodeURIComponent(ev.titre)
+    + "&dates=" + horodatage(ev.date, ev.heure) + "/" + horodatage(fin.date, fin.heure)
+    + "&ctz=Europe/Paris"
+    + "&details=" + encodeURIComponent(ev.details || "")
+    + (ev.lieu ? "&location=" + encodeURIComponent(ev.lieu) : "");
 }
-function ouvrirDocument(titre, corps){
-  var w = window.open("", "_blank");
-  if(!w) return null;
-  w.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>' + echapper(titre) + '</title><style>' + styleDocument() + '</style></head><body>'
-    + enteteDocument() + corps + '<button class="imp" onclick="window.print()">Imprimer / Enregistrer en PDF</button>' + piedDocument() + '</body></html>');
-  w.document.close();
-  return w;
+function contenuICS(ev){
+  var fin = ajouterMinutes(ev.date, ev.heure, ev.duree);
+  var uid = (ev.uid || ("edenel-" + Date.now())) + "@edenelnettoyage.fr";
+  var maintenant = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  var esc = function(t){ return String(t || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n"); };
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//EDENEL NETTOYAGE PRO//Site web//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VTIMEZONE", "TZID:Europe/Paris",
+    "BEGIN:DAYLIGHT", "TZOFFSETFROM:+0100", "TZOFFSETTO:+0200", "TZNAME:CEST", "DTSTART:19700329T020000", "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU", "END:DAYLIGHT",
+    "BEGIN:STANDARD", "TZOFFSETFROM:+0200", "TZOFFSETTO:+0100", "TZNAME:CET", "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD",
+    "END:VTIMEZONE",
+    "BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + maintenant,
+    "DTSTART;TZID=Europe/Paris:" + horodatage(ev.date, ev.heure),
+    "DTEND;TZID=Europe/Paris:" + horodatage(fin.date, fin.heure),
+    "SUMMARY:" + esc(ev.titre), "DESCRIPTION:" + esc(ev.details),
+    ev.lieu ? "LOCATION:" + esc(ev.lieu) : "",
+    "ORGANIZER;CN=" + esc(LEGAL.marque) + ":mailto:" + LEGAL.email,
+    "BEGIN:VALARM", "TRIGGER:-PT60M", "ACTION:DISPLAY", "DESCRIPTION:" + esc(ev.titre), "END:VALARM",
+    "END:VEVENT", "END:VCALENDAR"].filter(Boolean).join("\r\n");
+}
+function telechargerICS(ev, nomFichier){
+  var blob = new Blob([contenuICS(ev)], {type: "text/calendar;charset=utf-8"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a"); a.href = url; a.download = nomFichier || "rendez-vous-edenel.ics";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+}
+/* Remplit un conteneur avec les deux boutons agenda */
+function boutonsAgenda(conteneurId, ev, nomFichier){
+  var c = el(conteneurId); if(!c) return;
+  c.innerHTML = '<a class="btn btn-plein" target="_blank" rel="noopener" href="' + echapper(lienGoogleAgenda(ev)) + '">Ajouter à Google Agenda</a>'
+    + '<button class="btn btn-ligne" type="button" id="' + conteneurId + '-ics">Fichier .ics (Apple / Outlook)</button>';
+  el(conteneurId + "-ics").onclick = function(){ telechargerICS(ev, nomFichier); };
+  c.hidden = false;
 }
 
+/* ====== DOCUMENTS PDF (devis, facture, historique) — jsPDF chargé à la demande, aucune fenêtre pop-up ====== */
+var JSPDF_URL = {{ "js/jspdf.umd.min.js" | relURL | jsonify | safeJS }};
+var jsPDFEnCours = null;
+var PDF = {encre: [30, 42, 110], petrole: [30, 140, 168], chevron: [62, 189, 142], gris: [90, 103, 124], ligne: [220, 231, 236], clair: [247, 250, 252], orange: [180, 99, 42]};
+function pdfL(doc){ return doc.internal.pageSize.getWidth(); }
+function pdfH(doc){ return doc.internal.pageSize.getHeight(); }
+function pdfM(doc){ return doc.__marge || 18; }
+function pdfEntete(doc){
+  var M = pdfM(doc), W = pdfL(doc);
+  doc.setFillColor.apply(doc, PDF.encre); doc.rect(0, 0, W, 34, "F");
+  doc.setFillColor.apply(doc, PDF.petrole); doc.triangle(M, 22, M + 9, 13, M + 18, 22, "F");
+  doc.setFillColor.apply(doc, PDF.chevron); doc.triangle(M + 3, 27, M + 9, 19, M + 15, 27, "F");
+  doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("EDENEL", M + 24, 17);
+  doc.setFontSize(8.5); doc.setTextColor(150, 210, 225); doc.text("N E T T O Y A G E   P R O F E S S I O N N E L", M + 24, 23);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(210, 220, 235); doc.text(LEGAL.filiation, M + 24, 28);
+}
+function pdfPied(doc){
+  var M = pdfM(doc), W = pdfL(doc), yb = pdfH(doc) - 27;
+  doc.setDrawColor.apply(doc, PDF.ligne); doc.setLineWidth(0.2); doc.line(M, yb, W - M, yb);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.3); doc.setTextColor(138, 150, 172);
+  doc.text(LEGAL.marque + " — " + LEGAL.filiation, M, yb + 5);
+  doc.text(LEGAL.raison + " · " + LEGAL.forme, M, yb + 9);
+  doc.text("Siège social : " + LEGAL.adresse, M, yb + 13);
+  doc.text("SIRET " + LEGAL.siret + " · " + LEGAL.rcs + " · TVA " + LEGAL.tvaIntra + " · " + LEGAL.email, M, yb + 17);
+}
+function pdfSaut(doc, y, besoin){
+  if(y + (besoin || 20) > pdfH(doc) - 32){ doc.addPage(); pdfEntete(doc); pdfPied(doc); return 44; }
+  return y;
+}
+function pdfTitre(doc, titre, sousTitres){
+  var M = pdfM(doc), y = 48;
+  doc.setTextColor.apply(doc, PDF.encre); doc.setFont("helvetica", "bold"); doc.setFontSize(17); doc.text(titre, M, y);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor.apply(doc, PDF.gris);
+  (sousTitres || []).forEach(function(l){ y += 5.5; doc.text(l, M, y); });
+  return y + 7;
+}
+function pdfBloc(doc, y, titre, lignes){
+  var M = pdfM(doc), W = pdfL(doc), h = 13 + lignes.length * 6;
+  y = pdfSaut(doc, y, h);
+  doc.setDrawColor.apply(doc, PDF.ligne); doc.setFillColor.apply(doc, PDF.clair); doc.roundedRect(M, y, W - 2 * M, h, 3, 3, "FD");
+  doc.setTextColor.apply(doc, PDF.encre); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(titre, M + 5, y + 8);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor.apply(doc, PDF.gris);
+  lignes.forEach(function(l, i){ doc.text(String(l), M + 5, y + 15 + i * 6); });
+  return y + h + 6;
+}
+/* Tableau : colonnes [{titre, largeur, align, gras}], lignes [[cellule, …]] — gère les sauts de page */
+function pdfTableau(doc, y, colonnes, lignes){
+  var M = pdfM(doc), W = pdfL(doc), largeurTotale = W - 2 * M, pad = 2.5;
+  function entete(){
+    doc.setFillColor.apply(doc, PDF.encre); doc.rect(M, y, largeurTotale, 8, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+    var x = M;
+    colonnes.forEach(function(c){ doc.text(c.titre, c.align === "right" ? x + c.largeur - pad : x + pad, y + 5.5, {align: c.align === "right" ? "right" : "left"}); x += c.largeur; });
+    y += 8;
+  }
+  y = pdfSaut(doc, y, 20); entete();
+  lignes.forEach(function(row, ri){
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.8);
+    var cellules = colonnes.map(function(c, ci){ return doc.splitTextToSize(String(row[ci] == null ? "" : row[ci]), c.largeur - 2 * pad); });
+    var nb = Math.max.apply(null, cellules.map(function(c){ return c.length; }));
+    var h = nb * 4.4 + 3.6;
+    if(y + h > pdfH(doc) - 32){ doc.addPage(); pdfEntete(doc); pdfPied(doc); y = 44; entete(); }
+    if(ri % 2 === 0){ doc.setFillColor.apply(doc, PDF.clair); doc.rect(M, y, largeurTotale, h, "F"); }
+    var x = M;
+    colonnes.forEach(function(c, ci){
+      if(c.gras){ doc.setFont("helvetica", "bold"); doc.setTextColor.apply(doc, PDF.encre); } else { doc.setFont("helvetica", "normal"); doc.setTextColor.apply(doc, PDF.gris); }
+      doc.setFontSize(8.8);
+      doc.text(cellules[ci], c.align === "right" ? x + c.largeur - pad : x + pad, y + 4.4, {align: c.align === "right" ? "right" : "left"});
+      x += c.largeur;
+    });
+    doc.setDrawColor.apply(doc, PDF.ligne); doc.setLineWidth(0.2); doc.line(M, y + h, W - M, y + h);
+    y += h;
+  });
+  return y + 5;
+}
+function pdfTotaux(doc, y, lignes){
+  var M = pdfM(doc), W = pdfL(doc);
+  y = pdfSaut(doc, y, lignes.length * 8 + 6);
+  lignes.forEach(function(l){
+    if(l[2]){ doc.setDrawColor.apply(doc, PDF.chevron); doc.setLineWidth(0.7); doc.line(W - M - 85, y, W - M, y); doc.setLineWidth(0.2); doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor.apply(doc, PDF.encre); y += 2.5; }
+    else { doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor.apply(doc, PDF.gris); }
+    doc.text(l[0], W - M - 42, y + 4.5, {align: "right"});
+    doc.text(l[1], W - M, y + 4.5, {align: "right"});
+    y += l[2] ? 9 : 6.5;
+  });
+  return y + 5;
+}
+function pdfEncadre(doc, y, titre, texte, teinte){
+  var M = pdfM(doc), W = pdfL(doc);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.3);
+  var lignes = doc.splitTextToSize(texte, W - 2 * M - 10);
+  var h = 12 + lignes.length * 4.2;
+  y = pdfSaut(doc, y, h);
+  var orange = teinte === "orange";
+  doc.setDrawColor.apply(doc, orange ? [244, 216, 196] : PDF.ligne); doc.setFillColor.apply(doc, orange ? [252, 246, 240] : PDF.clair);
+  doc.roundedRect(M, y, W - 2 * M, h, 3, 3, "FD");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor.apply(doc, orange ? PDF.orange : PDF.encre); doc.text(titre, M + 5, y + 6.5);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.3); doc.setTextColor.apply(doc, PDF.gris); doc.text(lignes, M + 5, y + 12);
+  return y + h + 6;
+}
+function pdfSection(doc, y, titre){
+  var M = pdfM(doc);
+  y = pdfSaut(doc, y, 16);
+  doc.setTextColor.apply(doc, PDF.encre); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(titre, M, y);
+  doc.setFillColor.apply(doc, PDF.chevron); doc.rect(M, y + 2.5, Math.min(doc.getTextWidth(titre), 40), 0.8, "F");
+  return y + 9;
+}
+function pdfBadge(doc, y, texte){
+  var M = pdfM(doc);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+  var w = doc.getTextWidth(texte) + 10;
+  doc.setFillColor(231, 247, 240); doc.roundedRect(M, y, w, 8, 4, 4, "F");
+  doc.setTextColor(31, 122, 85); doc.text(texte, M + 5, y + 5.5);
+  return y + 14;
+}
+/* Crée un document, place en-tête et pied, exécute le rappel puis gère l'erreur */
+function nouveauPDF(cb, surErreur, options){
+  return chargerJsPDF().then(function(jsPDF){
+    var doc = new jsPDF(Object.assign({unit: "mm", format: "a4"}, options || {}));
+    doc.__marge = (options && options.marge) || 18;
+    pdfEntete(doc); pdfPied(doc);
+    return cb(doc);
+  }).catch(function(e){ if(surErreur) surErreur(e); else console.error(e); });
+}
 /* ====== GÉNÉRATEUR DE DEVIS ====== */
 function basculerDevis(){
   var pnl = el("panneau-devis");
@@ -445,59 +652,127 @@ function genererDevis(){
   var num = "DEV-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + Math.floor(100 + Math.random() * 900);
   var dateFr = new Date().toLocaleDateString("fr-FR", {day: "numeric", month: "long", year: "numeric"});
   var client = prenom + " " + nom + (societe ? " — " + societe : "");
-
-  var lignesHtml = lignes.map(function(it){
-    var quand = it.date ? "Intervention le " + frDate(it.date) + " — " : "";
-    return '<tr><td><strong>' + echapper(it.titre) + '</strong><br><span class="pt">' + echapper(it.detail) + '<br>' + quand + echapper(it.adresse) + '</span></td><td class="mt">' + eur(it.ht) + (it.mensuel ? ' HT/mois' : '') + '</td></tr>';
-  }).join("");
-  var corps = '<h1>Devis n° ' + num + '</h1><div class="meta">Établi le ' + dateFr + ' — Validité : 30 jours calendaires à compter de la date de génération du devis — gratuit et sans engagement</div>'
-    + '<div class="bloc"><strong>Client :</strong> ' + echapper(client) + (email ? '<br><strong>Email :</strong> ' + echapper(email) : '') + '</div>'
-    + '<table><tr><th>Prestation</th><th style="text-align:right">Montant HT</th></tr>' + lignesHtml
-    + '<tr><td><strong>Frais de déplacement</strong><br><span class="pt">' + nbDepl + ' intervention(s) × ' + eur(DEPL_HT) + ' HT</span></td><td class="mt">' + eur(depl) + '</td></tr>'
-    + '<tr class="tot"><td style="text-align:right">Total HT</td><td class="mt">' + eur(ht) + '</td></tr>'
-    + '<tr class="tot"><td style="text-align:right">TVA (20 %)</td><td class="mt">' + eur(tva) + '</td></tr>'
-    + '<tr class="tot"><td style="text-align:right" class="ttc">Total TTC</td><td class="mt ttc">' + eur(ttc) + '</td></tr></table>'
-    + (htMensuel > 0 ? '<div class="bloc">Contrats mensuels : <strong>' + eur(htMensuel) + ' HT/mois</strong>, soit ' + eur(r2(htMensuel * (1 + TVA))) + ' TTC/mois — estimation à confirmer après visite gratuite.</div>' : '')
-    + '<div class="cond"><strong>Conditions :</strong> tarifs conformes à notre grille en vigueur. Les produits d\'entretien obligatoires sont avancés par nos soins (' + PROD_ENTRETIEN + ' € HT) sauf s\'ils sont déjà fournis dans le logement par le donneur d\'ordre ; en leur absence, la prestation de ménage est reportée et de nouveaux frais de déplacement sont facturés. Majoration de 10 % les dimanches et jours fériés. Commande le jour même : avant 11 h 30, selon disponibilité.</div>';
-  var w = ouvrirDocument("Devis " + num + " — " + LEGAL.marque, corps);
-  if(!w){ note("dv-note", "⚠ Fenêtre bloquée par le navigateur — autorisez les pop-ups pour ce site.", ROUGE); return; }
-
   var resume = lignes.map(function(it){
     var quand = it.date ? " — le " + frDate(it.date) : "";
     return "• " + it.titre + " — " + it.detail + quand + " à " + it.adresse + " : " + eur(it.ht) + (it.mensuel ? " HT/mois" : " HT");
   }).join("\n");
-  var texte = "Bonjour " + prenom + ",\n\nVoici votre devis " + num + " établi le " + dateFr + " (validité : 30 jours calendaires à compter de la date de génération du devis) :\n\n" + resume
+  var texte = "Bonjour " + prenom + ",\n\nVoici votre devis " + num + " établi le " + dateFr + " (validité : 30 jours calendaires) :\n\n" + resume
     + "\nFrais de déplacement : " + eur(depl) + " HT (" + nbDepl + " intervention(s))"
     + "\n\nTotal HT : " + eur(ht) + "\nTVA (20 %) : " + eur(tva) + "\nTOTAL TTC : " + eur(ttc)
     + (htMensuel > 0 ? "\nContrats mensuels : " + eur(htMensuel) + " HT/mois, soit " + eur(r2(htMensuel * (1 + TVA))) + " TTC/mois (estimation à confirmer après visite)" : "")
     + "\n\nPour commander : rendez-vous sur notre site, bouton « Passer commande ».\n\n" + LEGAL.marque + " — " + LEGAL.filiation + "\n" + LEGAL.email;
-  if(estLocal()){
-    location.href = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("DEVIS " + num + " — " + client) + "&body=" + encodeURIComponent(texte);
-    note("dv-note", "✓ Devis " + num + " ouvert dans un nouvel onglet (imprimable en PDF). Mode test local : votre messagerie s'est ouverte pour nous transmettre la demande — en ligne, l'envoi par email est automatique.", VERT); return;
-  }
-  note("dv-note", "Génération du devis…", GRIS);
-  var charge = {_subject: "DEVIS " + num + " généré — " + client, "Client": client, "Devis": num, "Détail": resume, "Total": eur(ht) + " HT / " + eur(ttc) + " TTC"};
-  if(email){ charge.email = email; charge._autoresponse = texte; }
-  envoyerFormulaire(charge).then(function(){
-    note("dv-note", "✓ Devis " + num + " généré : il s'est ouvert dans un nouvel onglet (imprimable en PDF) et une copie vous a été envoyée à " + email + ".", VERT);
-  }).catch(function(){
-    note("dv-note", "✓ Devis " + num + " ouvert dans un nouvel onglet (imprimable en PDF). ⚠ L'envoi par email n'a pas abouti — enregistrez le PDF ou contactez-nous : " + LEGAL.email, ROUGE);
+
+  note("dv-note", "Génération de votre devis…", GRIS);
+  nouveauPDF(function(doc){
+    var y = pdfTitre(doc, "Devis n° " + num, ["Établi le " + dateFr + " — Validité : 30 jours calendaires à compter de cette date", "Gratuit et sans engagement"]);
+    y = pdfBloc(doc, y, "Client", [client, "Email : " + email]);
+    var rows = lignes.map(function(it){
+      var quand = it.date ? "Le " + frDate(it.date) + (it.heure ? " à " + it.heure : "") + " — " : "";
+      return [it.titre + "\n" + it.detail + "\n" + quand + it.adresse, eur(it.ht) + (it.mensuel ? " /mois" : "")];
+    });
+    rows.push(["Frais de déplacement — " + nbDepl + " intervention(s) × " + eur(DEPL_HT) + " HT", eur(depl)]);
+    y = pdfTableau(doc, y, [{titre: "Prestation", largeur: 134}, {titre: "Montant HT", largeur: 40, align: "right", gras: true}], rows);
+    y = pdfTotaux(doc, y, [["Total HT", eur(ht)], ["TVA (20 %)", eur(tva)], ["Total TTC", eur(ttc), true]]);
+    if(htMensuel > 0) y = pdfEncadre(doc, y, "Contrats mensuels", eur(htMensuel) + " HT/mois, soit " + eur(r2(htMensuel * (1 + TVA))) + " TTC/mois — estimation à confirmer après visite gratuite.");
+    y = pdfEncadre(doc, y, "Conditions", "Tarifs conformes à notre grille en vigueur. Les produits d'entretien obligatoires sont avancés par nos soins (" + PROD_ENTRETIEN + " € HT) sauf s'ils sont déjà fournis dans le logement par le donneur d'ordre ; en leur absence, la prestation de ménage est reportée et de nouveaux frais de déplacement sont facturés. Majoration de 10 % les dimanches et jours fériés. Commande le jour même : avant 11 h 30, selon disponibilité.", "orange");
+    doc.save("devis-edenel-" + num + ".pdf");
+
+    if(estLocal()){
+      location.href = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("DEVIS " + num + " — " + client) + "&body=" + encodeURIComponent(texte);
+      note("dv-note", "✓ Devis " + num + " téléchargé en PDF. Mode test local : votre messagerie s'est ouverte — en ligne, l'envoi par email est automatique.", VERT); return;
+    }
+    envoyerFormulaire({_subject: "DEVIS " + num + " généré — " + client, email: email, _autoresponse: texte, "Client": client, "Devis": num, "Détail": resume, "Total": eur(ht) + " HT / " + eur(ttc) + " TTC"})
+      .then(function(){ note("dv-note", "✓ Devis " + num + " téléchargé en PDF, et une copie vous a été envoyée à " + email + ".", VERT); })
+      .catch(function(){ note("dv-note", "✓ Devis " + num + " téléchargé en PDF. ⚠ L'envoi par email n'a pas abouti — conservez le PDF ou contactez-nous : " + LEGAL.email, ROUGE); });
+  }, function(){
+    note("dv-note", "⚠ Le générateur PDF n'a pas pu se charger. Réessayez, ou contactez-nous : " + LEGAL.email, ROUGE);
   });
 }
-
 /* ====== FORMULAIRE DE CONTACT (FormSubmit classique ; repli mailto en local) ====== */
+function champsFormulaire(form){
+  /* Récupère tous les champs nommés du formulaire, sauf les champs techniques FormSubmit */
+  var données = [];
+  form.querySelectorAll("input[name], select[name], textarea[name]").forEach(function(ch){
+    var nom = ch.getAttribute("name");
+    if(!nom || nom.charAt(0) === "_" || nom === "email") return;
+    if(ch.value.trim()) données.push([nom, ch.value.trim()]);
+  });
+  var mail = form.querySelector('input[name="email"]');
+  return {email: mail ? mail.value.trim() : "", champs: données};
+}
+function noteContact(id, texte, couleur){ note(id, texte, couleur) || note("note-maquette", texte, couleur); }
 (function(){
   var fc = el("form-contact");
   if(!fc) return;
   fc.addEventListener("submit", function(ev){
     if(!estLocal()) return;
     ev.preventDefault();
-    var v = function(id){ var x = el(id); return x ? x.value : ""; };
-    var corps = "Nom : " + v("nom") + "\nEmail : " + v("email") + "\nType de logement : " + v("logement") + "\nBesoin : " + v("msg");
+    var d = champsFormulaire(fc);
+    var corps = "Email : " + d.email + "\n" + d.champs.map(function(c){ return c[0] + " : " + c[1]; }).join("\n");
     location.href = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("Demande de devis — " + LEGAL.marque) + "&body=" + encodeURIComponent(corps);
-    note("note-maquette", "✓ Mode test local : votre logiciel de messagerie s'est ouvert avec la demande pré-remplie — cliquez sur Envoyer. Une fois le site en ligne, l'envoi est automatique.", VERT);
+    var msg = "✓ Mode test local : votre logiciel de messagerie s'est ouvert avec la demande pré-remplie — cliquez sur Envoyer. Une fois le site en ligne, l'envoi est automatique.";
+    if(el("ct-note")) note("ct-note", msg, VERT); else note("note-maquette", msg, VERT);
   });
 })();
+
+/* ====== TÉLÉCHARGEMENT DU DEVIS EN PDF (page Contact) ====== */
+function chargerJsPDF(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if(jsPDFEnCours) return jsPDFEnCours;
+  jsPDFEnCours = new Promise(function(resolve, reject){
+    var sc = document.createElement("script");
+    sc.src = JSPDF_URL;
+    sc.onload = function(){ (window.jspdf && window.jspdf.jsPDF) ? resolve(window.jspdf.jsPDF) : reject(new Error("jsPDF indisponible")); };
+    sc.onerror = function(){ reject(new Error("Chargement de jsPDF impossible")); };
+    document.head.appendChild(sc);
+  });
+  return jsPDFEnCours;
+}
+function majDispoDevis(){
+  var btn = el("btn-devis-pdf");
+  if(!btn) return;
+  var email = (el("ct-email") || {}).value || "";
+  var ok = email.indexOf("@") > 0 && email.indexOf(".") > 0;
+  btn.classList.toggle("pret", ok);
+}
+function telechargerDevisContact(){
+  var email = ((el("ct-email") || {}).value || "").trim();
+  if(email.indexOf("@") < 1 || email.lastIndexOf(".") < email.indexOf("@")){
+    note("ct-note", "⚠ Merci d'indiquer un email valide : votre demande de devis vous sera aussi envoyée à cette adresse, puis le téléchargement démarre.", ROUGE);
+    var champEmail = el("ct-email"); if(champEmail){ champEmail.focus(); }
+    return;
+  }
+  note("ct-note", "Préparation de votre demande de devis…", GRIS);
+  var nom = ((el("ct-nom") || {}).value || "").trim();
+  var tel = ((el("ct-tel") || {}).value || "").trim();
+  var presta = (el("ct-presta") || {}).value || "";
+  var lieu = ((el("ct-lieu") || {}).value || "").trim();
+  var besoin = ((el("ct-msg") || {}).value || "").trim();
+  var num = "DEV-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + Math.floor(100 + Math.random() * 900);
+  var dateFr = new Date().toLocaleDateString("fr-FR", {day: "numeric", month: "long", year: "numeric"});
+  nouveauPDF(function(doc){
+    var y = pdfTitre(doc, "Demande de devis", ["N° " + num + " — établie le " + dateFr, "Devis chiffré et personnalisé retourné sous 24 h, gratuit et sans engagement."]);
+    y = pdfBloc(doc, y, "Vos coordonnées", ["Nom : " + (nom || "—"), "Email : " + email, "Téléphone : " + (tel || "—") + "      Secteur du bien : " + (lieu || "—")]);
+    y = pdfSection(doc, y, "Prestation souhaitée");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor.apply(doc, PDF.petrole); doc.text("• " + presta, pdfM(doc), y); y += 9;
+    if(besoin){
+      y = pdfSection(doc, y, "Votre besoin");
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor.apply(doc, PDF.gris);
+      var lignes = doc.splitTextToSize(besoin, pdfL(doc) - 2 * pdfM(doc)); doc.text(lignes, pdfM(doc), y); y += lignes.length * 5.5 + 4;
+    }
+    y = pdfEncadre(doc, y, "Repères tarifaires (HT, hors devis personnalisé)", "Ménage : à partir de " + TARIF_BASE + " € HT/h  •  Bureaux : dès 3,50 € HT/m²/mois  •  Copropriétés : dès 250 € HT/mois\nFrais de déplacement : " + DEPL_HT + " € HT/commande  •  TVA 20 %  •  Tarif Fidélité −8 % dès la 5ᵉ commande.", "orange");
+    doc.save("demande-devis-edenel-" + num + ".pdf");
+    var msg = "✓ Votre demande de devis " + num + " a été téléchargée en PDF.";
+    if(estLocal()){ note("ct-note", msg + " (Mode test local : pensez à nous l'envoyer par email.)", VERT); return; }
+    envoyerFormulaire({
+      _subject: "Demande de devis " + num + " — " + (nom || email),
+      email: email,
+      _autoresponse: "Bonjour" + (nom ? " " + nom : "") + ",\n\nNous avons bien reçu votre demande de devis " + num + " (prestation : " + presta + "). Nous vous adressons un devis chiffré et personnalisé sous 24 h.\n\n" + LEGAL.marque + " — " + LEGAL.filiation + "\n" + LEGAL.email,
+      "Demande": num, "Nom": nom || "—", "Téléphone": tel || "—", "Prestation": presta, "Secteur": lieu || "—", "Besoin": besoin || "—"
+    }).then(function(){ note("ct-note", msg + " Une copie vous a été envoyée à " + email + " — réponse chiffrée sous 24 h.", VERT); })
+      .catch(function(){ note("ct-note", msg + " Envoyez-le nous par email à " + LEGAL.email + " pour recevoir votre devis chiffré.", VERT); });
+  }, function(){ note("ct-note", "⚠ Le générateur PDF n'a pas pu se charger. Utilisez « Contacter par email » ou écrivez-nous à " + LEGAL.email + ".", ROUGE); });
+}
 function fermerFormContact(){
   var f = el("form-contact");
   f.style.display = "none";
@@ -552,21 +827,21 @@ function genererFacture(){
   var tva = r2(ht * TVA), ttc = r2(ht + tva);
   var numF = "FAC-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + Math.floor(100 + Math.random() * 900);
   var dateFr = new Date().toLocaleDateString("fr-FR", {day: "numeric", month: "long", year: "numeric"});
-  var lignes = detail.split("\n").filter(function(l){ return l.trim(); }).map(function(l){ return "<tr><td>" + echapper(l) + "</td></tr>"; }).join("");
-  var corps = '<h1>Facture n° ' + numF + '</h1><div class="meta">Émise le ' + dateFr + ' — Référence commande/devis : ' + echapper(num) + ' — Intervention effectuée le ' + frDate(dateStr) + '</div>'
-    + '<div class="statut">' + echapper(el("ft-statut").value) + '</div>'
-    + '<div class="bloc"><strong>Client :</strong> ' + echapper(client) + (email ? '<br><strong>Email :</strong> ' + echapper(email) : '') + '</div>'
-    + '<div class="bloc" style="font-size:12px;color:#5A677C">Facture émise après double validation conforme à nos conditions : ① bon de réception validé par le client, ② validation interne EDENEL, au plus tôt 5 h après l\'heure d\'intervention planifiée.</div>'
-    + '<table><tr><th>Prestations réalisées</th></tr>' + lignes + '</table>'
-    + '<table><tr class="tot"><td style="text-align:right">Total HT</td><td class="mt">' + eur(ht) + '</td></tr>'
-    + '<tr class="tot"><td style="text-align:right">TVA (20 %)</td><td class="mt">' + eur(tva) + '</td></tr>'
-    + '<tr class="tot"><td style="text-align:right" class="ttc">Total TTC</td><td class="mt ttc">' + eur(ttc) + '</td></tr></table>'
-    + '<div class="cond encadre"><strong>' + ANNULATION + '</strong></div>';
-  var w = ouvrirDocument("Facture " + numF + " — " + LEGAL.marque, corps);
-  if(!w){ note("ft-note", "⚠ Fenêtre bloquée par le navigateur — autorisez les pop-ups pour ce site.", ROUGE); return; }
-  note("ft-note", "✓ Facture " + numF + " générée — imprimez-la en PDF et transmettez-la au client par email.", VERT);
+  var statut = el("ft-statut").value;
+  note("ft-note", "Génération de la facture…", GRIS);
+  nouveauPDF(function(doc){
+    var y = pdfTitre(doc, "Facture n° " + numF, ["Émise le " + dateFr + " — Référence commande / devis : " + num, "Intervention effectuée le " + frDate(dateStr) + " (planifiée à " + heurePlan + ")"]);
+    y = pdfBadge(doc, y, statut);
+    y = pdfBloc(doc, y, "Client", [client, email ? "Email : " + email : ""].filter(Boolean));
+    var rows = detail.split("\n").filter(function(l){ return l.trim(); }).map(function(l){ return [l.trim()]; });
+    y = pdfTableau(doc, y, [{titre: "Prestations réalisées", largeur: 174}], rows);
+    y = pdfTotaux(doc, y, [["Total HT", eur(ht)], ["TVA (20 %)", eur(tva)], ["Total TTC", eur(ttc), true]]);
+    y = pdfEncadre(doc, y, "Double validation", "Facture émise après ① bon de réception validé par le client et ② validation interne EDENEL, au plus tôt 5 h après l'heure d'intervention planifiée.");
+    y = pdfEncadre(doc, y, "Conditions d'annulation", ANNULATION, "orange");
+    doc.save("facture-edenel-" + numF + ".pdf");
+    note("ft-note", "✓ Facture " + numF + " téléchargée en PDF — transmettez-la au client par email.", VERT);
+  }, function(){ note("ft-note", "⚠ Le générateur PDF n'a pas pu se charger. Réessayez dans un instant.", ROUGE); });
 }
-
 /* ====== ESPACE CLIENT (données locales au navigateur — aucun stockage sur le site) ====== */
 var COMPTE_KEY = "edenel_compte", CMD_KEY = "edenel_commandes";
 var compteConnecte = false;
@@ -645,7 +920,7 @@ function enregistrerCommande(){
     numClient: (lireJSON(COMPTE_KEY) || {}).numero || ""
   };
   var l = lireCmds(); l.push(rec); ecrireJSON(CMD_KEY, l);
-  return rec.id;
+  return rec;
 }
 function statutAuto(r){
   if(r.statutP) return r.statutP;
@@ -696,17 +971,23 @@ function pdfHistorique(){
   var l = lireCmds();
   var totHT = r2(l.reduce(function(s, r){ return s + r.ht; }, 0));
   var totTTC = r2(l.reduce(function(s, r){ return s + r.ttc; }, 0));
-  var lignes = l.map(function(r){
-    return "<tr><td class='hist'>" + r.id + "</td><td class='hist'>" + frDate(r.dateCmd) + "</td><td class='hist'>" + echapper(r.prestations) + "</td><td class='hist'>" + echapper(r.adresse) + "</td><td class='hist'>" + frDate(r.dateInt) + "</td><td class='hist'>" + (r.heurePlan || "—") + "</td><td class='mt hist'>" + eur(r.ht) + "</td><td class='mt hist'>" + eur(r.ttc) + "</td><td class='hist'>" + (r.dateBR ? frDate(r.dateBR) : "—") + "</td><td class='hist'>" + statutAuto(r) + "</td><td class='hist'>" + r.statutF + "</td></tr>";
-  }).join("");
-  var corps = '<h1>Historique des commandes et de la facturation</h1>'
-    + '<div class="meta">Client : ' + echapper(c.nom || "") + (c.email ? " — " + echapper(c.email) : "") + ' · Document généré le ' + new Date().toLocaleDateString("fr-FR") + '</div>'
-    + '<table><tr><th>Réf.</th><th>Commandée le</th><th>Prestation(s)</th><th>Adresse du bien</th><th>Intervention</th><th>Heure planifiée</th><th>Total HT</th><th>Total TTC</th><th>BR validé le</th><th>Statut prestation</th><th>Statut facture</th></tr>' + lignes + '</table>'
-    + '<div class="bloc" style="text-align:right;font-weight:800;color:#1F2A70">Cumul : ' + eur(totHT) + ' HT — ' + eur(totTTC) + ' TTC</div>'
-    + '<div class="cond">Document récapitulatif généré localement depuis le navigateur du client — aucune donnée ni facture n\'est stockée sur le site.</div>';
-  if(!ouvrirDocument("Historique commandes & facturation — EDENEL", corps)) alert("Autorisez les fenêtres pop-up pour télécharger l'historique.");
+  var btn = document.querySelector('[onclick="pdfHistorique()"]');
+  if(btn){ btn.disabled = true; btn.textContent = "Génération…"; }
+  nouveauPDF(function(doc){
+    var y = pdfTitre(doc, "Historique des commandes et de la facturation", ["Client : " + (c.nom || "") + (c.email ? " — " + c.email : "") + (c.numero ? " — N° client " + c.numero : ""), "Document généré le " + new Date().toLocaleDateString("fr-FR")]);
+    var rows = l.map(function(r){ return [r.id, frDate(r.dateCmd), r.prestations, r.adresse, frDate(r.dateInt), r.heurePlan || "—", eur(r.ht), eur(r.ttc), r.dateBR ? frDate(r.dateBR) : "—", statutAuto(r), r.statutF]; });
+    if(!rows.length) rows.push(["—", "", "Aucune commande enregistrée sur cet appareil.", "", "", "", "", "", "", "", ""]);
+    y = pdfTableau(doc, y, [
+      {titre: "Réf.", largeur: 28, gras: true}, {titre: "Commandée", largeur: 21}, {titre: "Prestation(s)", largeur: 52}, {titre: "Adresse", largeur: 44},
+      {titre: "Intervention", largeur: 21}, {titre: "Heure", largeur: 13}, {titre: "HT", largeur: 19, align: "right"}, {titre: "TTC", largeur: 19, align: "right"},
+      {titre: "BR validé", largeur: 21}, {titre: "Statut", largeur: 20}, {titre: "Facture", largeur: 15}
+    ], rows);
+    y = pdfTotaux(doc, y, [["Cumul HT", eur(totHT)], ["Cumul TTC", eur(totTTC), true]]);
+    pdfEncadre(doc, y, "Information", "Récapitulatif généré localement depuis le navigateur du client — aucune donnée ni facture n'est stockée sur le site.");
+    doc.save("historique-edenel-" + new Date().toISOString().slice(0, 10) + ".pdf");
+  }, function(){ alert("Le générateur PDF n'a pas pu se charger. Réessayez dans un instant."); }, {orientation: "landscape", marge: 12})
+  .then(function(){ if(btn){ btn.disabled = false; btn.textContent = "Télécharger l'historique (PDF)"; } });
 }
-
 /* ====== UNIVERS BUREAUX & COPROPRIÉTÉS ====== */
 function choisirUnivers(u){
   univers = u;
@@ -792,7 +1073,7 @@ function ajouterAuPanierBureaux(){
   panier.push({
     titre: BUREAUX.ponctuel[s].n + " — intervention ponctuelle",
     detail: taux + " € HT/h × " + h + " h" + (el("bp-heure").value ? " · heure souhaitée : " + el("bp-heure").value : ""),
-    date: dateStr, adresse: adresse, commentaire: "",
+    date: dateStr, heure: el("bp-heure").value, h: h, adresse: adresse, commentaire: "",
     ht: r2(taux * h)
   });
   majPanier(); fermerCommande(); ouvrirPanier();

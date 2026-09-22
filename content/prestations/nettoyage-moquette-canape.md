@@ -54,4 +54,4 @@ Canapés, fauteuils, têtes de lit, matelas : le shampouinage s'intègre au [gra
 
 ## Devis
 
-Le nettoyage de moquettes et de textiles est chiffré sur devis, selon la surface (m²) ou le nombre de pièces à traiter et l'état constaté. [Prenez rendez-vous](/#contact) ou décrivez-nous votre besoin dans le formulaire de contact : nous vous répondons sous 24 h.
+Le nettoyage de moquettes et de textiles est chiffré sur devis, selon la surface (m²) ou le nombre de pièces à traiter et l'état constaté. [Prenez rendez-vous](/contact/) ou décrivez-nous votre besoin dans le formulaire de contact : nous vous répondons sous 24 h.

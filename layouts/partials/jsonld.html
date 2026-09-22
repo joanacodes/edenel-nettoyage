@@ -54,6 +54,34 @@
   {{- $graph = $graph | append (dict "@type" "BreadcrumbList" "@id" (printf "%s#ariane" .Permalink) "itemListElement" $items) -}}
 {{- end -}}
 
+{{- /* ---- Page Contact ---- */ -}}
+{{- if .Params.contact -}}
+  {{- $graph = $graph | append (dict
+    "@type" "ContactPage"
+    "@id" (printf "%s#page" .Permalink)
+    "url" .Permalink
+    "name" .Title
+    "description" (.Description | plainify | htmlUnescape)
+    "inLanguage" "fr-FR"
+    "isPartOf" (dict "@id" (printf "%s#site" site.Home.Permalink))
+    "about" (dict "@id" $orgId)
+  ) -}}
+{{- end -}}
+
+{{- /* ---- Page Expérience (À propos) ---- */ -}}
+{{- if and .File (eq .File.ContentBaseName "experience") -}}
+  {{- $graph = $graph | append (dict
+    "@type" "AboutPage"
+    "@id" (printf "%s#page" .Permalink)
+    "url" .Permalink
+    "name" .Title
+    "description" (.Description | plainify | htmlUnescape)
+    "inLanguage" "fr-FR"
+    "isPartOf" (dict "@id" (printf "%s#site" site.Home.Permalink))
+    "about" (dict "@id" $orgId)
+  ) -}}
+{{- end -}}
+
 {{- /* ---- Article de blog ---- */ -}}
 {{- if and (eq .Section "blog") .IsPage -}}
   {{- $graph = $graph | append (dict

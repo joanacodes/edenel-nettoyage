@@ -18,7 +18,7 @@
         </ul>
       </div>
       {{ end }}
-      <a href="{{ $home }}#experience">Expérience</a>
+      {{ with site.GetPage "/experience" }}<a href="{{ .RelPermalink }}"{{ if eq $.Permalink .Permalink }} aria-current="page"{{ end }}>Expérience</a>{{ end }}
       {{ with $tarifs }}<a href="{{ .RelPermalink }}"{{ if eq $.Permalink .Permalink }} aria-current="page"{{ end }}>Tarifs</a>{{ end }}
       {{ with $blog }}
       <div class="menu-deroulant menu-blog">
@@ -29,7 +29,7 @@
         </ul>
       </div>
       {{ end }}
-      <a href="{{ $home }}#contact">Contact</a>
+      {{ with site.GetPage "/contact" }}<a href="{{ .RelPermalink }}"{{ if eq $.Permalink .Permalink }} aria-current="page"{{ end }}>Contact</a>{{ end }}
       <a href="#" onclick="ouvrirCompte();return false">Espace client</a>
     </nav>
     <div class="nav-actions">

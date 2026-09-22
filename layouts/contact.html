@@ -1,0 +1,109 @@
+{{ define "main" }}
+{{- $s := site.Params.societe -}}
+<div class="page-entete">
+  <div class="wrap">
+    {{ partial "ariane.html" . }}
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.chapo | default .Description }}<p class="chapo">{{ . | safeHTML }}</p>{{ end }}
+  </div>
+</div>
+
+<div class="page-corps">
+  <div class="wrap contact-page">
+
+    <aside class="contact-infos">
+      <h2>Nous joindre</h2>
+      <ul class="coord">
+        <li>
+          <span class="coord-ico">{{ partial "icone.html" "enveloppe" }}</span>
+          <span><strong>Email</strong><a href="mailto:{{ site.Params.email }}">{{ site.Params.email }}</a></span>
+        </li>
+        {{ with site.Params.telephone }}
+        <li>
+          <span class="coord-ico">{{ partial "icone.html" "horloge" }}</span>
+          <span><strong>Téléphone</strong><a href="tel:{{ replace . " " "" }}">{{ . }}</a></span>
+        </li>
+        {{ end }}
+        <li>
+          <span class="coord-ico">{{ partial "icone.html" "epingle" }}</span>
+          <span><strong>Zone d'intervention</strong>Paris · Val-de-Marne (94) · toute l'Île-de-France</span>
+        </li>
+        <li>
+          <span class="coord-ico">{{ partial "icone.html" "horloge" }}</span>
+          <span><strong>Disponibilité</strong>7j/7, dimanches et jours fériés compris — réponse sous 24 h</span>
+        </li>
+      </ul>
+
+      <div class="contact-rappel">
+        <h3>Besoin d'un tarif tout de suite ?</h3>
+        <p>Notre simulateur calcule votre prestation et son montant en deux minutes, puis génère un devis chiffré.</p>
+        <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+      </div>
+
+      <p class="contact-legal">{{ $s.raison }} — {{ $s.forme }}<br>Siège : {{ $s.rue }}, {{ $s.cp }} {{ $s.ville }}<br>{{ $s.rcs }} · SIRET {{ $s.siret }}</p>
+    </aside>
+
+    <div class="contact-form-carte">
+      <h2>Écrivez-nous ou téléchargez votre demande de devis</h2>
+      <p class="contact-form-sous">Renseignez vos coordonnées et votre besoin. Vous pouvez ensuite <strong>nous envoyer votre demande par email</strong>, <strong>prendre rendez-vous</strong>, ou <strong>télécharger votre demande de devis en PDF</strong> (email obligatoire).</p>
+
+      <form id="form-contact" action="https://formsubmit.co/{{ site.Params.formsubmit }}" method="POST" aria-label="Formulaire de contact et de demande de devis">
+        <input type="hidden" name="_subject" value="Nouvelle demande — {{ site.Params.marque }} (page Contact)">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_language" value="fr">
+        {{ with site.GetPage "/merci" }}<input type="hidden" name="_next" value="{{ .Permalink }}">{{ end }}
+        <input type="text" name="_honey" class="cache" tabindex="-1" autocomplete="off">
+
+        <div class="bc-ligne">
+          <div class="champ">
+            <label for="ct-nom">Votre nom</label>
+            <input id="ct-nom" name="Nom" type="text" placeholder="Ex. : Marie Dupont" autocomplete="name">
+          </div>
+          <div class="champ">
+            <label for="ct-email">Email <span class="req">*</span></label>
+            <input id="ct-email" name="email" type="email" required placeholder="Ex. : marie@exemple.fr" autocomplete="email" oninput="majDispoDevis()">
+          </div>
+          <div class="champ">
+            <label for="ct-tel">Téléphone <span class="aide">(facultatif)</span></label>
+            <input id="ct-tel" name="Téléphone" type="tel" placeholder="Ex. : 06 12 34 56 78" autocomplete="tel">
+          </div>
+          <div class="champ">
+            <label for="ct-presta">Prestation souhaitée</label>
+            <select id="ct-presta" name="Prestation souhaitée">
+              <option>Ménage Premium Airbnb</option>
+              <option>Nettoyage hôtelier</option>
+              <option>Entretien du linge</option>
+              <option>Grand ménage / fin de bail / fin de chantier</option>
+              <option>Nettoyage de moquettes &amp; canapés</option>
+              <option>Nettoyage de bureaux</option>
+              <option>Entretien de copropriété</option>
+              <option>Autre / je ne sais pas encore</option>
+            </select>
+          </div>
+          <div class="champ large">
+            <label for="ct-lieu">Adresse ou secteur du bien <span class="aide">(facultatif)</span></label>
+            <input id="ct-lieu" name="Adresse ou secteur" type="text" placeholder="Ex. : Paris 12ᵉ, ou Vincennes (94)">
+          </div>
+          <div class="champ large">
+            <label for="ct-msg">Votre besoin</label>
+            <textarea id="ct-msg" name="Votre besoin" rows="4" placeholder="Ex. : rotations Airbnb 2 à 3 fois par semaine, linge inclus, studio à Paris 12ᵉ ; ou contrat d'entretien pour 120 m² de bureaux…"></textarea>
+          </div>
+        </div>
+
+        <div class="contact-actions">
+          <button class="btn btn-plein" type="submit">
+            <span class="btn-ico">{{ partial "icone.html" "enveloppe" }}</span> Contacter par email
+          </button>
+          <button class="btn btn-ligne" type="button" onclick="ouvrirRdv()">
+            <span class="btn-ico">{{ partial "icone.html" "agenda" }}</span> Prendre rendez-vous
+          </button>
+          <button class="btn-telecharger" type="button" id="btn-devis-pdf" onclick="telechargerDevisContact()" aria-label="Télécharger ma demande de devis en PDF" title="Télécharger ma demande de devis en PDF">
+            <span class="btn-ico">{{ partial "icone.html" "telechargement" }}</span> Télécharger le devis (PDF)
+          </button>
+        </div>
+        <p class="contact-note" id="ct-note">Vos coordonnées ne servent qu'à vous répondre — aucune donnée n'est cédée à des tiers. Réponse sous 24 h.</p>
+      </form>
+    </div>
+  </div>
+</div>
+{{ end }}

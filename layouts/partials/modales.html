@@ -89,7 +89,7 @@
         <button class="btn btn-teal" type="button" onclick="basculerDevis()">Générer le devis</button>
         <button class="btn btn-ligne" type="button" onclick="fermerCommande();ouvrirRdv()">Prendre rendez-vous</button>
         <button class="btn btn-vert" type="button" onclick="ajouterAuPanier()">Ajouter au panier</button>
-        <button class="btn btn-plein" type="button" onclick="ouvrirPanier()">Voir mon panier (<span id="cpt-panier">0</span>)</button>
+        <button class="btn btn-plein" type="button" onclick="ouvrirPanier()">Voir mon panier <span class="badge" id="cpt-panier">0</span></button>
       </div>
     </div><!-- fin zone-menage -->
 
@@ -134,7 +134,7 @@
         <button class="btn btn-teal" type="button" onclick="basculerDevis()">Générer le devis</button>
         <button class="btn btn-ligne" type="button" onclick="fermerCommande();ouvrirRdv()">Prendre rendez-vous</button>
         <button class="btn btn-vert" type="button" id="b-btn-panier" onclick="ajouterAuPanierBureaux()">Ajouter au panier</button>
-        <button class="btn btn-plein" type="button" id="b-btn-voir" onclick="ouvrirPanier()">Voir mon panier (<span id="cpt-panier2">0</span>)</button>
+        <button class="btn btn-plein" type="button" id="b-btn-voir" onclick="ouvrirPanier()">Voir mon panier <span class="badge" id="cpt-panier2">0</span></button>
       </div>
     </div>
 
@@ -217,13 +217,13 @@
     <div class="champ tel-bloc">
       <label for="pan-tel">Téléphone mobile <span class="req">*</span> <span class="aide">(obligatoire pour commander)</span></label>
       <div class="tel-ligne">
-        {{ partial "indicatifs.html" (dict "id" "pan-indicatif" "largeur" "170px") }}
-        <input id="pan-tel" type="tel" placeholder="0612345678" class="tel-champ">
+        {{ partial "indicatifs.html" (dict "id" "pan-indicatif") }}
+        <input id="pan-tel" type="tel" inputmode="tel" placeholder="0612345678" class="tel-champ" autocomplete="tel-national">
       </div>
       <p class="modal-note note-serree" id="pan-note"></p>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-vert" type="button" onclick="ouvrirPaiement()">Payez en toute sécurité</button>
+      <button class="btn btn-vert" type="button" onclick="ouvrirPaiement()">Valider ma commande</button>
       <button class="lien-retour" type="button" onclick="fermerPanier();ouvrirCommande()">← Ajouter une autre prestation</button>
     </div>
   </div>
@@ -252,19 +252,27 @@
       <div class="cal-grille" id="cal-grille"></div>
       <div class="creneaux" id="creneaux" hidden></div>
       <div class="bc-ligne espace-haut">
-        <div class="champ"><label for="rdv-nom">Votre nom</label><input id="rdv-nom" type="text" placeholder="Ex. : Marie Dupont"></div>
-        <div class="champ"><label for="rdv-tel">Téléphone mobile <span class="req">*</span></label>
+        <div class="champ"><label for="rdv-nom">Votre nom</label><input id="rdv-nom" type="text" placeholder="Ex. : Marie Dupont" autocomplete="name"></div>
+        <div class="champ large"><label for="rdv-tel">Téléphone mobile <span class="req">*</span></label>
           <div class="tel-ligne">
-            {{ partial "indicatifs.html" (dict "id" "rdv-indicatif" "largeur" "150px") }}
-            <input id="rdv-tel" type="tel" placeholder="0612345678" class="tel-champ">
+            {{ partial "indicatifs.html" (dict "id" "rdv-indicatif") }}
+            <input id="rdv-tel" type="tel" inputmode="tel" placeholder="0612345678" class="tel-champ" autocomplete="tel-national">
           </div>
         </div>
-        <div class="champ"><label for="rdv-email">Email <span class="req">*</span></label><input id="rdv-email" type="email" required placeholder="Pour recevoir la confirmation"></div>
+        <div class="champ"><label for="rdv-email">Email <span class="req">*</span></label><input id="rdv-email" type="email" required placeholder="Pour recevoir la confirmation" autocomplete="email"></div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-vert" type="button" onclick="envoyerRdv()">Confirmer ma demande de rendez-vous</button>
       </div>
       <p class="modal-note" id="rdv-note">Rendez-vous téléphonique ou sur site, 7j/7 — sans engagement.</p>
+    </div>
+    <div id="rdv-succes" class="succes" hidden>
+      <div class="succes-ico" aria-hidden="true">✓</div>
+      <h4>Demande de rendez-vous enregistrée</h4>
+      <p class="succes-recap" id="rdv-recap"></p>
+      <p class="modal-note" id="rdv-succes-note"></p>
+      <div class="agenda-boutons" id="rdv-agenda" hidden></div>
+      <button class="lien-retour" type="button" onclick="fermerRdv()">Fermer</button>
     </div>
     <div id="rdv-externe" hidden><iframe class="rdv-iframe" id="rdv-frame" title="Calendrier de réservation EDENEL"></iframe></div>
   </div>
@@ -373,20 +381,42 @@
 <div class="modal-fond" id="modal-paiement" role="dialog" aria-modal="true" aria-labelledby="titre-paiement" onclick="if(event.target===this)fermerPaiement()">
   <div class="modal">
     <button class="modal-fermer" type="button" aria-label="Fermer" onclick="fermerPaiement()">✕</button>
-    <h3 id="titre-paiement">Payez en toute sécurité</h3>
-    <p class="sous" id="paiement-montant">Choisissez votre mode de paiement sécurisé :</p>
-    <div class="paiement">
-      <a href="{{ site.Params.lienStripe | default "LIEN_STRIPE_A_COLLER_ICI" }}" onclick="return verifLien(this)">
-        <span class="p-ico">VISA<br>MC</span>
-        <span><strong>Carte bancaire — Visa / Mastercard</strong>
-        <span class="det">Paiement sécurisé via Stripe</span></span>
-      </a>
-      <a href="{{ site.Params.lienPaypal | default "LIEN_PAYPAL_A_COLLER_ICI" }}" onclick="return verifLien(this)">
-        <span class="p-ico p-paypal">Pay<br>Pal</span>
-        <span><strong>PayPal</strong>
-        <span class="det">Payez avec votre compte PayPal</span></span>
-      </a>
+    <h3 id="titre-paiement">Confirmer ma commande</h3>
+    <p class="sous" id="paiement-montant"></p>
+    <div id="paiement-choix">
+      <div class="bc-info">Votre commande est transmise à EDENEL et un récapitulatif vous est envoyé par email, avec un lien pour l'ajouter à votre agenda. Nous vous confirmons l'heure exacte d'intervention. <strong>Règlement à réception de la facture</strong>, émise après votre bon de réception.</div>
+      <div class="modal-actions">
+        <button class="btn btn-vert" type="button" onclick="confirmerCommande()">Confirmer ma commande</button>
+      </div>
+      {{ if or site.Params.lienStripe site.Params.lienPaypal }}
+      <p class="modal-note espace-haut">Ou réglez dès maintenant en ligne :</p>
+      <div class="paiement">
+        {{ with site.Params.lienStripe }}
+        <a href="{{ . }}" target="_blank" rel="noopener" onclick="return verifLien(this)">
+          <span class="p-ico">VISA<br>MC</span>
+          <span><strong>Carte bancaire — Visa / Mastercard</strong>
+          <span class="det">Paiement sécurisé via Stripe</span></span>
+        </a>
+        {{ end }}
+        {{ with site.Params.lienPaypal }}
+        <a href="{{ . }}" target="_blank" rel="noopener" onclick="return verifLien(this)">
+          <span class="p-ico p-paypal">Pay<br>Pal</span>
+          <span><strong>PayPal</strong>
+          <span class="det">Payez avec votre compte PayPal</span></span>
+        </a>
+        {{ end }}
+      </div>
+      {{ end }}
+      <p class="modal-note" id="note-paiement"></p>
+      <p class="modal-note">Après l'intervention, validez votre bon de réception (lien « Bon de réception &amp; Facture » en pied de page) : votre facture est émise après double validation, au plus tôt 5 h après l'heure d'intervention planifiée. Aucune donnée bancaire n'est stockée sur ce site.</p>
     </div>
-    <p class="modal-note" id="note-paiement">Paiement chiffré — aucune donnée bancaire n'est stockée sur ce site. Après l'intervention, validez votre bon de réception (lien « Bon de réception &amp; Facture » en pied de page) : votre facture est émise après double validation, au plus tôt 5 h après l'heure d'intervention planifiée.</p>
+    <div id="paiement-succes" class="succes" hidden>
+      <div class="succes-ico" aria-hidden="true">✓</div>
+      <h4>Commande transmise</h4>
+      <p class="succes-recap" id="paiement-recap"></p>
+      <p class="modal-note" id="paiement-succes-note"></p>
+      <div class="agenda-boutons" id="paiement-agenda" hidden></div>
+      <button class="lien-retour" type="button" onclick="fermerPaiement()">Fermer</button>
+    </div>
   </div>
 </div>

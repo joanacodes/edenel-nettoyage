@@ -502,3 +502,94 @@ table.grille sup{color:var(--petrole);font-weight:700}
 .encart-tarifs strong{font-family:var(--display);color:var(--encre);font-size:15px}
 .encart .aide{font-size:12.5px;margin-bottom:14px}
 .page-entete .hero-ctas{margin-top:22px}
+
+/* ============================================================
+   Ajouts : scrollbar aux couleurs du site, angles arrondis,
+   page Contact, boutons à icône
+   ============================================================ */
+
+/* ---------- Barre de défilement (une seule couleur : pétrole) ---------- */
+html{scrollbar-color:var(--petrole) var(--ecume);scrollbar-width:thin}
+*::-webkit-scrollbar{width:12px;height:12px}
+*::-webkit-scrollbar-track{background:var(--ecume);border-radius:999px}
+*::-webkit-scrollbar-thumb{background:var(--petrole);border-radius:999px;border:3px solid var(--ecume)}
+*::-webkit-scrollbar-thumb:hover{background:var(--encre)}
+.modal-large{scrollbar-color:var(--petrole) #fff;scrollbar-width:thin}
+.modal-large::-webkit-scrollbar-track{background:#fff}
+.modal-large::-webkit-scrollbar-thumb{border-color:#fff}
+
+/* ---------- Tous les angles arrondis (modale et contrôles) ---------- */
+.modal{border-radius:26px}
+.modal-large{border-radius:26px}
+.modal-fermer{border-radius:12px}
+.champ input,.champ select,.champ textarea{border-radius:12px}
+.bc-info{border-radius:14px}
+.bc-onglet{border-radius:12px}
+.bc-total{border-radius:0}
+.creneau,.cal-case{border-radius:10px}
+.paiement a{border-radius:14px}
+.modal .btn,.contact-actions .btn{border-radius:999px}
+select.indicatif{border-radius:12px}
+.ac-liste{border-radius:12px;overflow:hidden}
+.encart{border-radius:20px}
+
+/* ---------- Boutons à icône ---------- */
+.btn .btn-ico,.btn-telecharger .btn-ico{display:inline-flex;vertical-align:middle;margin-right:8px}
+.btn .btn-ico svg,.btn-telecharger .btn-ico svg{width:19px;height:19px}
+.btn-plein .btn-ico svg [stroke="#1E8CA8"],.btn-plein .btn-ico svg [stroke="#3EBD8E"]{stroke:#fff}
+.btn-vert .btn-ico svg [stroke="#1E8CA8"],.btn-vert .btn-ico svg [stroke="#3EBD8E"]{stroke:#fff}
+
+/* ---------- Page Contact ---------- */
+.contact-page{display:grid;grid-template-columns:0.85fr 1.15fr;gap:34px;align-items:start}
+@media(max-width:860px){.contact-page{grid-template-columns:1fr;gap:24px}}
+
+.contact-infos{background:var(--ecume);border:1px solid var(--ligne);border-radius:22px;padding:28px 26px}
+.contact-infos h2{font-size:clamp(20px,2.4vw,25px);margin-bottom:16px}
+.coord{list-style:none;display:grid;gap:16px;margin-bottom:24px}
+.coord li{display:flex;gap:13px;align-items:flex-start}
+.coord-ico{flex:none;width:42px;height:42px;border-radius:12px;background:#fff;border:1px solid var(--ligne);display:grid;place-items:center}
+.coord-ico svg{width:22px;height:22px}
+.coord li span:last-child{display:flex;flex-direction:column;font-size:14.5px;color:var(--texte);line-height:1.45}
+.coord strong{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--encre);margin-bottom:2px}
+.coord a{color:var(--petrole);text-decoration:none;font-weight:600;word-break:break-word}
+.coord a:hover{text-decoration:underline}
+
+.contact-rappel{background:#fff;border:1px solid var(--ligne);border-radius:16px;padding:18px 20px;margin-bottom:20px}
+.contact-rappel h3{font-family:var(--display);font-size:16px;color:var(--encre);margin-bottom:6px}
+.contact-rappel p{font-size:13.5px;color:#5B677C;margin-bottom:12px}
+.contact-rappel .btn{width:100%;justify-content:center}
+.contact-legal{font-size:11.5px;color:#8A96AC;line-height:1.6}
+
+.contact-form-carte{background:#fff;border:1px solid var(--ligne);border-radius:22px;padding:30px 28px;box-shadow:0 18px 44px rgba(20,29,78,.07)}
+.contact-form-carte h2{font-size:clamp(20px,2.4vw,26px);margin-bottom:8px}
+.contact-form-sous{font-size:14.5px;color:#5B677C;line-height:1.55;margin-bottom:22px}
+.contact-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;align-items:center}
+.contact-actions .btn{justify-content:center}
+.contact-note{font-size:12.5px;color:#8A96AC;margin-top:14px;line-height:1.5}
+
+.btn-telecharger{display:inline-flex;align-items:center;justify-content:center;gap:0;font-family:var(--display);font-weight:600;font-size:15px;cursor:pointer;padding:13px 22px;border-radius:999px;border:1.8px dashed var(--petrole);background:var(--ecume);color:var(--petrole);transition:background .15s,border-color .15s,transform .05s}
+.btn-telecharger:hover{background:#E2F1F5}
+.btn-telecharger:active{transform:translateY(1px)}
+.btn-telecharger.pret{border-style:solid;background:var(--petrole);color:#fff}
+.btn-telecharger.pret .btn-ico svg [stroke]{stroke:#fff}
+.btn-telecharger:focus-visible{outline:3px solid var(--chevron);outline-offset:2px}
+
+/* ---------- Écrans de succès (rendez-vous, commande) + boutons agenda ---------- */
+.succes{text-align:center;padding:10px 4px 4px}
+.succes-ico{width:58px;height:58px;margin:0 auto 14px;border-radius:50%;background:#E7F7F0;color:#1F7A55;display:grid;place-items:center;font-size:28px;font-weight:800}
+.succes h4{font-family:var(--display);font-size:20px;color:var(--encre);margin-bottom:8px}
+.succes-recap{font-family:var(--display);font-weight:600;font-size:15px;color:var(--petrole);margin-bottom:8px}
+.succes .modal-note{margin:0 auto 16px;max-width:460px}
+.agenda-boutons{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:6px 0 16px}
+.agenda-boutons .btn{flex:1 1 200px;justify-content:center;text-decoration:none}
+.succes .lien-retour{display:inline-block}
+
+/* ---------- Compteur de panier dans les boutons ---------- */
+.btn .badge{margin-left:8px;background:#fff;color:var(--encre)}
+.btn-plein .badge{background:rgba(255,255,255,.18);color:#fff}
+
+/* ---------- Téléphone : indicatif compact, numéro qui prend la place ---------- */
+.tel-ligne{display:flex;gap:8px;align-items:stretch}
+.tel-ligne .indicatif{flex:0 0 150px;max-width:150px;min-width:0}
+.tel-ligne .tel-champ{flex:1 1 auto;min-width:0}
+@media(max-width:480px){.tel-ligne .indicatif{flex-basis:130px;max-width:130px;font-size:14px}}

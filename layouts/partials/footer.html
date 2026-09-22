@@ -16,11 +16,11 @@
         <h3>Navigation</h3>
         <ul>
           <li><a href="{{ $home }}#prestations">Nos prestations</a></li>
-          <li><a href="{{ $home }}#experience">Notre expérience</a></li>
+          {{ with site.GetPage "/experience" }}<li><a href="{{ .RelPermalink }}">Notre expérience</a></li>{{ end }}
           {{ with site.GetPage "/tarifs" }}<li><a href="{{ .RelPermalink }}">Grille tarifaire</a></li>{{ end }}
           {{ with site.GetPage "/blog" }}<li><a href="{{ .RelPermalink }}">Blog — conseils propreté</a></li>{{ end }}
           <li><a href="{{ $home }}#faq">Questions fréquentes</a></li>
-          <li><a href="{{ $home }}#contact">Contact &amp; devis gratuit</a></li>
+          {{ with site.GetPage "/contact" }}<li><a href="{{ .RelPermalink }}">Contact &amp; devis gratuit</a></li>{{ end }}
         </ul>
       </div>
       <div>

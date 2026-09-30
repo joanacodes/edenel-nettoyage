@@ -66,6 +66,10 @@ draft: false
 
 Le slug (URL) est le nom du fichier : `content/blog/menage-airbnb-paris-15.md` → `/blog/menage-airbnb-paris-15/`. Les 15 articles actuels reprennent le contenu de l'ancien site ; ils peuvent être enrichis ou remplacés par les 30 articles de 1 000 mots prévus.
 
+## 4 bis. Mode serveur (recommandé) — Supabase, Resend, Google Agenda
+
+Comptes clients synchronisés entre appareils (connexion par code email), commandes enregistrées et vérifiées, agenda de rendez-vous réel sans double réservation, emails envoyés depuis `contact@edenelnettoyage.fr`, page d'administration **/admin/** (rendez-vous, commandes, planification, factures numérotées). Mise en place : **[docs/MISE-EN-SERVICE.md](docs/MISE-EN-SERVICE.md)**. Tant que `supabaseUrl` est vide dans `hugo.toml`, le site fonctionne dans le mode décrit ci-dessous.
+
 ## 4. Réservations, commandes et agendas — sans aucun compte à connecter
 
 Le site fonctionne **sans serveur et sans API** : rien à brancher, rien à payer.

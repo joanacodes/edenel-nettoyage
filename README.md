@@ -66,6 +66,10 @@ draft: false
 
 Le slug (URL) est le nom du fichier : `content/blog/menage-airbnb-paris-15.md` → `/blog/menage-airbnb-paris-15/`. Les 15 articles actuels reprennent le contenu de l'ancien site ; ils peuvent être enrichis ou remplacés par les 30 articles de 1 000 mots prévus.
 
+## 4 bis. Mode serveur (recommandé) — Supabase, Resend, Google Agenda
+
+Comptes clients synchronisés entre appareils (connexion par code email), commandes enregistrées et vérifiées, agenda de rendez-vous réel sans double réservation, emails envoyés depuis `contact@edenelnettoyage.fr`, page d'administration **/admin/** (rendez-vous, commandes, planification, factures numérotées). Mise en place : **[docs/MISE-EN-SERVICE.md](docs/MISE-EN-SERVICE.md)**. Tant que `supabaseUrl` est vide dans `hugo.toml`, le site fonctionne dans le mode décrit ci-dessous.
+
 ## 4. Réservations, commandes et agendas — sans aucun compte à connecter
 
 Le site fonctionne **sans serveur et sans API** : rien à brancher, rien à payer.
@@ -79,6 +83,14 @@ Le site fonctionne **sans serveur et sans API** : rien à brancher, rien à paye
 
 Ce qu'il faut savoir : le créneau demandé est une **demande**, pas une réservation ferme — le site ne connaît pas l'agenda réel de la société, donc c'est la société qui confirme par téléphone (c'est écrit au client). Pour une vérification automatique des disponibilités, il faudrait connecter un outil de réservation (Cal.com ou les plages de rendez-vous Google) via le paramètre `calendrierExterne` — prêt à l'emploi si vous changez d'avis.
 
+**Emails** : FormSubmit répond « OK » même quand il refuse d'envoyer (formulaire non activé). Le site lit désormais la réponse réelle : si l'email n'est pas parti, le client le voit, son panier est conservé et un lien « envoyer la commande par email » lui est proposé. Les récapitulatifs automatiques partent d'une adresse FormSubmit : ils arrivent souvent dans les **spams**.
+
+**Frais de déplacement** : un seul déplacement par intervention (même date + même adresse), quel que soit le nombre de prestations — y compris si le client passe plusieurs commandes séparées depuis le même appareil. `deplacementOffertDes` (dans `data/tarifs.yaml`) permet de les offrir au-delà d'un montant HT par intervention.
+
+**Panier** : conservé d'une page à l'autre (navigateur du client).
+
+**Espace client sur plusieurs appareils** : le compte vit dans le navigateur (pas de serveur). Bouton « Utiliser mon compte sur un autre appareil » → lien personnel à ouvrir sur le téléphone / l'autre ordinateur, qui recopie le compte, le numéro client et l'historique. À la création d'un compte, un client peut aussi saisir son numéro client existant. Une vraie synchronisation automatique nécessiterait une base de données en ligne (Supabase, Firebase…).
+
 **Devis, factures, historique** : tous les documents sont générés dans le navigateur en **vrais fichiers PDF** téléchargés (bibliothèque jsPDF hébergée sur le site, chargée uniquement au clic). Aucune fenêtre pop-up, donc aucun blocage par les navigateurs.
 
 ## 5. À renseigner avant la mise en ligne
@@ -86,10 +98,16 @@ Ce qu'il faut savoir : le créneau demandé est une **demande**, pas une réserv
 Dans `hugo.toml` :
 
 - `formsubmit` : l'adresse email qui reçoit les formulaires. ⚠ **Indispensable : lors du tout premier envoi depuis le site en ligne, FormSubmit envoie un email d'activation à cette adresse — tant que le lien n'est pas cliqué, aucun formulaire, rendez-vous ni commande n'arrive.** Faites un premier envoi test vous-même juste après la mise en ligne.
+- ⚠ Vérifier que la boîte `contact@edenelnettoyage.fr` **existe et reçoit bien des emails** (sinon le lien d'activation FormSubmit n'arrive jamais).
 - `telephone` : numéro affiché dans le pied de page et le JSON-LD (laisser vide pour ne rien afficher).
 - `lienStripe`, `lienPaypal` : facultatifs. Liens de paiement (Payment Link Stripe, bouton PayPal.me) — tant qu'ils sont vides, la commande se confirme par email avec règlement à réception de facture ; dès qu'un lien est renseigné, le paiement en ligne apparaît en option.
 - `calendrierExterne` : URL Calendly / Google Agenda si vous préférez un agenda externe au calendrier intégré.
 - `codeInterne` : code de l'onglet « générer la facture ». ⚠ Ce code est lisible dans le JavaScript public ; il évite les erreurs de manipulation mais n'est pas une protection de sécurité. Pour une vraie facturation en ligne, utilisez un outil dédié.
+
+Dans `data/tarifs.yaml` :
+
+- `textile` : ⚠ **prix provisoires** des moquettes, tapis et canapés (à la pièce / au m²) et minimum d'intervention — à valider avant la mise en ligne.
+- `deplacementOffertDes` : montant HT à partir duquel le déplacement est offert (0 = jamais).
 
 ## 6. Structure du projet
 

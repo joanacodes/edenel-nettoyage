@@ -33,7 +33,7 @@ points:
   - "Alerte sur les niveaux de stock et justificatifs d'achats en temps réel"
 faq:
   - question: "Combien coûte un ménage Airbnb à Paris avec EDENEL ?"
-    reponse: "Le taux horaire de base est de 28 € HT pour une intervention planifiée 4 jours ou plus à l'avance. Un ménage seul de T2 représente 2 heures minimum, soit 56 € HT ; la Formule Airbnb (ménage + linge) d'un T2 représente 3,5 heures, soit 98 € HT. S'ajoutent les frais de déplacement (15 € HT par commande), l'avance produits d'entretien (12 € HT, sauf produits déjà sur place) et la laverie (6 € HT par lit) pour le linge. Dès la 5ᵉ commande, le Tarif Fidélité applique −8 % à vie."
+    reponse: "Le taux horaire de base est de 28 € HT pour une intervention planifiée 4 jours ou plus à l'avance. Un ménage seul de T2 représente 2 heures minimum, soit 56 € HT ; la Formule Airbnb (ménage + linge) d'un T2 représente 3,5 heures, soit 98 € HT. S'ajoutent les frais de déplacement (15 € HT par intervention — une seule fois si plusieurs prestations ont lieu à la même adresse le même jour), l'avance produits d'entretien (12 € HT, sauf produits déjà sur place) et la laverie (6 € HT par lit) pour le linge. Dès la 5ᵉ commande, le Tarif Fidélité applique −8 % à vie."
   - question: "Pouvez-vous intervenir entre un check-out à 11 h et un check-in à 15 h ?"
     reponse: "Oui, c'est notre cœur de métier. Nous intervenons 7 jours sur 7 dans la fenêtre entre deux voyageurs, y compris le jour même (commande avant 11 h 30, selon disponibilité). Un accès autonome (boîte à clés, serrure connectée) et un stock de linge propre sur place rendent la rotation encore plus fluide."
   - question: "Que se passe-t-il si les produits d'entretien manquent dans le logement ?"

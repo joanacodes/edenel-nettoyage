@@ -8,9 +8,10 @@
     <h3 id="titre-commande">Passer commande</h3>
     <p class="sous" id="sous-commande">Composez votre prestation : les montants HT se calculent automatiquement, la TVA de 20 % est ajoutée au total.</p>
 
-    <div class="bc-onglets espace-bas" role="tablist">
+    <div class="bc-onglets univers espace-bas" role="tablist">
       <button class="bc-onglet actif" id="ong-u-menage" type="button" onclick="choisirUnivers('menage')">Ménage Premium<br><span class="onglet-sous">Airbnb · Hôtels · Particuliers</span></button>
       <button class="bc-onglet" id="ong-u-bureaux" type="button" onclick="choisirUnivers('bureaux')">Bureaux</button>
+      <button class="bc-onglet" id="ong-u-textile" type="button" onclick="choisirUnivers('textile')">Moquettes &amp; canapés</button>
       <button class="bc-onglet" id="ong-u-copro" type="button" onclick="choisirUnivers('copro')">Copropriétés</button>
     </div>
 
@@ -52,7 +53,7 @@
         </div>
         <div class="champ large">
           <label for="bc-adresse">Adresse de l'intervention</label>
-          <input id="bc-adresse" type="text" autocomplete="off" placeholder="N°, rue, code postal, ville (Paris, 94, Île-de-France)">
+          <input id="bc-adresse" type="text" autocomplete="off" oninput="calculer()" placeholder="N°, rue, code postal, ville (Paris, 94, Île-de-France)">
         </div>
         <div class="champ large" id="bloc-prodok" hidden>
           <label class="case">
@@ -79,7 +80,7 @@
         <div class="lig" id="lig-majo" hidden><span>Majoration dimanche / jour férié (+10 %)</span><span id="t-majo">—</span></div>
         <div class="lig" id="lig-supp" hidden><span id="lbl-supp">Suppléments obligatoires (HT)</span><span id="t-supp">—</span></div>
         <div class="lig" id="lig-opt" hidden><span>Produits de toilette &amp; consommables (option)</span><span id="t-opt">—</span></div>
-        <div class="lig"><span>Frais de déplacement ({{ $t.deplacement }} € HT / commande)</span><span id="t-depl">{{ $t.deplacement }},00 €</span></div>
+        <div class="lig"><span id="lbl-depl">Frais de déplacement ({{ $t.deplacement }} € HT par intervention)</span><span id="t-depl">{{ $t.deplacement }},00 €</span></div>
         <div class="lig"><span>Total HT</span><span id="t-ht">—</span></div>
         <div class="lig"><span>TVA (20 %)</span><span id="t-tva">—</span></div>
         <div class="lig ttc"><span>Total TTC</span><span id="t-ttc">—</span></div>
@@ -107,7 +108,7 @@
             <input id="bp-heures" type="number" min="{{ $t.bureaux.minHeures }}" max="14" step="0.5" value="{{ $t.bureaux.minHeures }}" oninput="calcBureaux()" onchange="calcBureaux()"></div>
           <div class="champ"><label for="bp-date">Date d'intervention souhaitée</label><input id="bp-date" type="date" onchange="calcBureaux()"></div>
           <div class="champ"><label for="bp-heure">Heure d'intervention souhaitée</label><input id="bp-heure" type="time"></div>
-          <div class="champ large"><label for="bp-adresse">Adresse des locaux</label><input id="bp-adresse" type="text" autocomplete="off" placeholder="N°, rue, code postal, ville"></div>
+          <div class="champ large"><label for="bp-adresse">Adresse des locaux</label><input id="bp-adresse" type="text" autocomplete="off" oninput="calcBureaux()" placeholder="N°, rue, code postal, ville"></div>
         </div>
       </div>
       <div id="b-contrat" hidden>
@@ -137,6 +138,40 @@
         <button class="btn btn-plein" type="button" id="b-btn-voir" onclick="ouvrirPanier()">Voir mon panier <span class="badge" id="cpt-panier2">0</span></button>
       </div>
     </div>
+
+    <!-- ============ UNIVERS MOQUETTES & CANAPÉS ============ -->
+    {{ with $t.textile }}
+    <div id="zone-textile" hidden>
+      <div class="bc-info">Nettoyage par <strong>injection-extraction</strong> sur site : détachage, désodorisation, séchage rapide. Indiquez les quantités à traiter — prix à la pièce ou au m², minimum d'intervention {{ .minimum }} € HT. Les frais de déplacement ne sont comptés qu'une fois si vous commandez aussi un ménage le même jour à la même adresse.</div>
+      <div class="bc-ligne">
+        {{ range $i, $a := .articles }}
+        <div class="champ">
+          <label for="tx-q{{ $i }}">{{ $a.nom }} <span class="aide">({{ if gt $a.prix 0 }}{{ $a.prix }} € HT / {{ $a.unite }}{{ else }}sur devis{{ end }})</span></label>
+          <input id="tx-q{{ $i }}" type="number" min="0" max="{{ if eq $a.unite "m²" }}2000{{ else }}50{{ end }}" step="1" value="0" inputmode="numeric" oninput="calcTextile()" onchange="calcTextile()">
+        </div>
+        {{ end }}
+        <div class="champ"><label for="tx-date">Date d'intervention souhaitée</label><input id="tx-date" type="date" onchange="calcTextile()"></div>
+        <div class="champ"><label for="tx-heure">Heure d'intervention souhaitée</label><input id="tx-heure" type="time"></div>
+        <div class="champ large"><label for="tx-adresse">Adresse de l'intervention</label><input id="tx-adresse" type="text" autocomplete="off" oninput="calcTextile()" placeholder="N°, rue, code postal, ville"></div>
+        <div class="champ large"><label for="tx-comment">Commentaire (facultatif)</label><textarea id="tx-comment" rows="2" placeholder="Ex. : tissu velours, tache de vin sur l'assise, accès par la cour…"></textarea></div>
+      </div>
+      <div class="bc-info" id="tx-detail">Indiquez au moins un article : le prix s'affiche instantanément.</div>
+      <div class="bc-total">
+        <div class="lig"><span>Prestation (HT)</span><span id="tx-prest">—</span></div>
+        <div class="lig" id="tx-lig-majo" hidden><span>Majoration dimanche / jour férié (+10 %)</span><span id="tx-majo">—</span></div>
+        <div class="lig"><span id="tx-lbl-depl">Frais de déplacement ({{ $t.deplacement }} € HT par intervention)</span><span id="tx-depl">—</span></div>
+        <div class="lig"><span>Total HT</span><span id="tx-ht">—</span></div>
+        <div class="lig"><span>TVA (20 %)</span><span id="tx-tva">—</span></div>
+        <div class="lig ttc"><span>Total TTC</span><span id="tx-ttc">—</span></div>
+      </div>
+      <div class="modal-actions quatre">
+        <button class="btn btn-teal" type="button" onclick="basculerDevis()">Générer le devis</button>
+        <button class="btn btn-ligne" type="button" onclick="fermerCommande();ouvrirRdv()">Prendre rendez-vous</button>
+        <button class="btn btn-vert" type="button" onclick="ajouterAuPanierTextile()">Ajouter au panier</button>
+        <button class="btn btn-plein" type="button" onclick="ouvrirPanier()">Voir mon panier <span class="badge" id="cpt-panier3">0</span></button>
+      </div>
+    </div>
+    {{ end }}
 
     <!-- ============ UNIVERS COPROPRIÉTÉS ============ -->
     <div id="zone-copro" hidden>
@@ -210,6 +245,7 @@
     <div id="liste-panier"></div>
     <div class="bc-total">
       <div class="lig"><span>Frais de déplacement (<span id="p-nbdepl">0</span> intervention(s) × {{ $t.deplacement }},00 € HT)</span><span id="p-depl">0,00 €</span></div>
+      <p class="modal-note note-serree">Un seul déplacement est facturé par date et par adresse, quel que soit le nombre de prestations — y compris si une commande a déjà été passée depuis cet appareil pour la même date et la même adresse.</p>
       <div class="lig"><span>Total HT</span><span id="p-ht">0,00 €</span></div>
       <div class="lig"><span>TVA (20 %)</span><span id="p-tva">0,00 €</span></div>
       <div class="lig ttc"><span>Total TTC</span><span id="p-ttc">0,00 €</span></div>
@@ -260,6 +296,7 @@
           </div>
         </div>
         <div class="champ"><label for="rdv-email">Email <span class="req">*</span></label><input id="rdv-email" type="email" required placeholder="Pour recevoir la confirmation" autocomplete="email"></div>
+        <div class="champ large"><label for="rdv-message">Objet du rendez-vous <span class="aide">(facultatif)</span></label><textarea id="rdv-message" rows="2" placeholder="Ex. : devis pour le ménage de 3 appartements Airbnb à Paris 11ᵉ"></textarea></div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-vert" type="button" onclick="envoyerRdv()">Confirmer ma demande de rendez-vous</button>
@@ -355,13 +392,57 @@
         <div class="champ"><label for="cp-email">Email</label><input id="cp-email" type="email" placeholder="Votre email"></div>
         <div class="champ"><label for="cp-pin">Code secret (4 chiffres minimum)</label><input id="cp-pin" type="password" placeholder="••••" minlength="4"></div>
         <div class="champ"><label for="cp-tel">Téléphone mobile <span class="aide">(+33 0…)</span></label><input id="cp-tel" type="tel" placeholder="+33 0612345678"></div>
+        <div class="champ"><label for="cp-numero">Déjà client ? Votre numéro client <span class="aide">(facultatif)</span></label><input id="cp-numero" type="text" placeholder="Ex. : SH-20260724-41"></div>
       </div>
       <div class="modal-actions quatre">
         <button class="btn btn-vert" type="button" onclick="creerCompte()">Créer mon compte</button>
         <button class="btn btn-plein" type="button" onclick="seConnecter()">Me connecter</button>
       </div>
-      <p class="modal-note" id="auth-note">Vos informations et votre historique restent enregistrés dans votre navigateur, sur cet appareil uniquement — rien n'est stocké sur le site. La création d'un compte génère automatiquement votre numéro client (nécessaire pour le Tarif Fidélité).</p>
+      <p class="modal-note" id="auth-note">Vos informations et votre historique restent enregistrés dans votre navigateur — rien n'est stocké sur le site. La création d'un compte génère automatiquement votre numéro client (nécessaire pour le Tarif Fidélité).</p>
+      <div class="bc-info"><strong>Vous avez déjà un compte sur un autre appareil (ordinateur, téléphone) ?</strong> Inutile d'en recréer un : sur l'appareil où il existe, ouvrez l'Espace client puis « Utiliser mon compte sur un autre appareil » et ouvrez le lien reçu sur celui-ci — votre numéro client, votre historique et votre Tarif Fidélité sont transférés. À défaut, créez votre compte ici en indiquant votre numéro client existant.</div>
       <button class="lien-retour" type="button" onclick="codeOublie()">Code secret oublié ?</button>
+    </div>
+
+    <!-- Mode serveur : connexion par code reçu par email -->
+    <div id="zone-connexion" hidden>
+      <p class="sous" id="cx-sous">Connectez-vous avec votre email : nous vous envoyons un code à 6 chiffres. Même compte sur votre ordinateur et votre téléphone.</p>
+      <div id="cx-etape-email">
+        <div class="bc-ligne">
+          <div class="champ large"><label for="cx-email">Votre email</label><input id="cx-email" type="email" autocomplete="email" placeholder="Ex. : marie@exemple.fr"></div>
+        </div>
+        <div class="modal-actions"><button class="btn btn-vert" type="button" id="cx-btn-code" onclick="envoyerCodeConnexion()">Recevoir mon code de connexion</button></div>
+      </div>
+      <div id="cx-etape-code" hidden>
+        <div class="bc-ligne">
+          <div class="champ large"><label for="cx-code">Code reçu par email</label><input id="cx-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456"></div>
+        </div>
+        <div class="modal-actions quatre">
+          <button class="btn btn-vert" type="button" id="cx-btn-valider" onclick="validerCodeConnexion()">Me connecter</button>
+          <button class="btn btn-ligne" type="button" onclick="changerEmailConnexion()">Changer d'email</button>
+        </div>
+      </div>
+      <div id="cx-etape-profil" hidden>
+        <p class="sous">Première connexion : complétez votre profil. Votre numéro client (nécessaire pour le Tarif Fidélité) est créé automatiquement.</p>
+        <div class="bc-ligne">
+          <div class="champ"><label for="cx-nom">Votre nom</label><input id="cx-nom" type="text" autocomplete="name" placeholder="Prénom Nom"></div>
+          <div class="champ"><label for="cx-tel">Téléphone mobile</label><input id="cx-tel" type="tel" autocomplete="tel" placeholder="06 12 34 56 78"></div>
+          <div class="champ large"><label for="cx-numero">Déjà client ? Votre numéro client <span class="aide">(facultatif)</span></label><input id="cx-numero" type="text" placeholder="Ex. : SH-20260724-41"></div>
+        </div>
+        <div class="modal-actions"><button class="btn btn-vert" type="button" onclick="enregistrerProfil()">Enregistrer mon profil</button></div>
+      </div>
+      <p class="modal-note" id="cx-note">Pas de mot de passe à retenir : un nouveau code vous est envoyé à chaque connexion.</p>
+    </div>
+
+    <div id="zone-import" hidden>
+      <p class="sous" id="imp-sous"></p>
+      <div class="bc-ligne">
+        <div class="champ"><label for="imp-pin">Code secret pour cet appareil (4 chiffres minimum)</label><input id="imp-pin" type="password" inputmode="numeric" placeholder="••••" minlength="4"></div>
+      </div>
+      <div class="modal-actions quatre">
+        <button class="btn btn-vert" type="button" onclick="confirmerImport()">Importer mon compte sur cet appareil</button>
+        <button class="btn btn-ligne" type="button" onclick="annulerImport()">Annuler</button>
+      </div>
+      <p class="modal-note" id="imp-note">Vous pouvez reprendre le même code secret que sur votre autre appareil.</p>
     </div>
 
     <div id="zone-tableau" hidden>
@@ -370,9 +451,20 @@
       <div class="cmd-defile"><table class="cmd" id="tb-table"></table></div>
       <div class="modal-actions quatre espace-haut">
         <button class="btn btn-teal" type="button" onclick="pdfHistorique()">Télécharger l'historique (PDF)</button>
+        <button class="btn btn-plein" type="button" id="btn-transfert" onclick="lienTransfert()">Utiliser mon compte sur un autre appareil</button>
         <button class="btn btn-ligne" type="button" onclick="seDeconnecter()">Me déconnecter</button>
       </div>
-      <p class="modal-note">Historique enregistré localement dans votre navigateur — aucune facture n'est stockée sur le site. Le statut de la prestation et de la facture peuvent être ajustés via les menus de chaque ligne.</p>
+      <div id="zone-transfert" class="bc-info espace-haut" hidden>
+        <p><strong>Votre lien personnel de transfert</strong> — ouvrez-le sur votre téléphone ou votre autre ordinateur : votre compte, votre numéro client et votre historique y seront recopiés. Ne le partagez pas : il contient vos coordonnées.</p>
+        <div class="champ"><label for="tr-lien">Lien de transfert</label><input id="tr-lien" type="text" readonly onclick="this.select()"></div>
+        <div class="modal-actions quatre espace-haut">
+          <button class="btn btn-teal" type="button" onclick="copierTransfert()">Copier le lien</button>
+          <a class="btn btn-ligne" id="tr-mail" href="#">M'envoyer le lien par email</a>
+          <button class="btn btn-ligne" type="button" id="tr-partager" hidden onclick="partagerTransfert()">Partager…</button>
+        </div>
+        <p class="modal-note" id="tr-note"></p>
+      </div>
+      <p class="modal-note" id="tb-note">Historique enregistré localement dans votre navigateur — aucune facture n'est stockée sur le site. Le statut de la prestation et de la facture peuvent être ajustés via les menus de chaque ligne.</p>
     </div>
   </div>
 </div>
@@ -386,7 +478,7 @@
     <div id="paiement-choix">
       <div class="bc-info">Votre commande est transmise à EDENEL et un récapitulatif vous est envoyé par email, avec un lien pour l'ajouter à votre agenda. Nous vous confirmons l'heure exacte d'intervention. <strong>Règlement à réception de la facture</strong>, émise après votre bon de réception.</div>
       <div class="modal-actions">
-        <button class="btn btn-vert" type="button" onclick="confirmerCommande()">Confirmer ma commande</button>
+        <button class="btn btn-vert" type="button" id="btn-confirmer" onclick="confirmerCommande()">Confirmer ma commande</button>
       </div>
       {{ if or site.Params.lienStripe site.Params.lienPaypal }}
       <p class="modal-note espace-haut">Ou réglez dès maintenant en ligne :</p>

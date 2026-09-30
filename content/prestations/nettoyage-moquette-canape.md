@@ -7,7 +7,8 @@ chapo: "Une solution détergente projetée au cœur des fibres puis aspirée imm
 weight: 5
 icone: canape
 serviceType: "Nettoyage de moquettes et de textiles d'ameublement"
-ancreTarifs: tarifs-horaires
+ancreTarifs: moquettes-canapes
+simulateur: textile
 resume: "Shampouinage par injection-extraction, détachage ciblé et désodorisation : moquettes, canapés, fauteuils, têtes de lit."
 tarifs:
   - label: "Moquette de couloir d'hôtel"
@@ -52,6 +53,6 @@ Réalisée de nuit ou en période de basse occupation, l'intervention n'immobili
 
 Canapés, fauteuils, têtes de lit, matelas : le shampouinage s'intègre au [grand ménage de printemps](/prestations/fin-de-bail-fin-de-chantier/) d'une location Airbnb, avant la haute saison, ou après un séjour qui a laissé des traces. Nous intervenons sur site, à Paris et dans toute l'Île-de-France.
 
-## Devis
+## Tarifs et commande en ligne
 
-Le nettoyage de moquettes et de textiles est chiffré sur devis, selon la surface (m²) ou le nombre de pièces à traiter et l'état constaté. [Prenez rendez-vous](/contact/) ou décrivez-nous votre besoin dans le formulaire de contact : nous vous répondons sous 24 h.
+Canapés, fauteuils, têtes de lit, matelas et chaises sont facturés à la pièce ; tapis et moquettes au m². Cliquez sur « Combien ça coûte ? » : le simulateur ouvre directement l'onglet **Moquettes & canapés**, indiquez les quantités, la date et l'adresse, et le prix s'affiche instantanément — vous pouvez l'ajouter au panier avec un ménage prévu le même jour à la même adresse, sans frais de déplacement supplémentaires. Pour une moquette de couloir d'hôtel, une grande surface ou un programme annuel, [prenez rendez-vous](/contact/) : le chiffrage se fait sur devis après visite.

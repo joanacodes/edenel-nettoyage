@@ -216,7 +216,9 @@ footer a:hover{text-decoration:underline}
 .bc-onglets{display:flex;gap:8px;margin-bottom:18px}
 .bc-onglet{flex:1;font-family:var(--display);font-weight:600;font-size:13.5px;border:1.5px solid var(--ligne);background:var(--fond);color:var(--texte);border-radius:10px;padding:10px 8px;cursor:pointer}
 .bc-onglet.actif{background:var(--encre);border-color:var(--encre);color:#fff}
-.bc-ligne{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+.bc-onglets.univers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:640px){.bc-onglets.univers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bc-ligne{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr))}
 .bc-ligne .large{grid-column:1 / -1}
 .bc-info{font-size:13px;color:var(--petrole);background:var(--ecume);border-radius:10px;padding:10px 14px;margin-top:4px}
 .bc-total{margin-top:16px;border-top:1.5px solid var(--ligne);padding-top:14px;display:grid;gap:5px;font-size:14.5px}
@@ -593,3 +595,24 @@ select.indicatif{border-radius:12px}
 .tel-ligne .indicatif{flex:0 0 150px;max-width:150px;min-width:0}
 .tel-ligne .tel-champ{flex:1 1 auto;min-width:0}
 @media(max-width:480px){.tel-ligne .indicatif{flex-basis:130px;max-width:130px;font-size:14px}}
+
+/* ====== Espace EDENEL (admin) ====== */
+.adm h2{font-size:20px;margin:0 0 10px}
+.adm-barre{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.adm-barre .btn{width:auto}
+.adm-filtres{margin:6px 0 14px}
+.adm-filtres select{font:inherit;border:1.5px solid var(--ligne);border-radius:10px;padding:10px 12px;background:var(--fond)}
+.adm-cmd{border:1.5px solid var(--ligne);border-radius:14px;padding:16px;margin-bottom:14px;background:#fff}
+.adm-cmd h3{font-size:16px;margin:0 0 4px}
+.adm-cmd .adm-meta{color:var(--gris,#68758a);font-size:14px;margin:0 0 10px}
+.adm-cmd ul{margin:0 0 10px;padding-left:18px;font-size:14px}
+.adm-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.adm-actions .champ{min-width:130px}
+.adm-actions .btn{width:auto;padding:10px 16px}
+.adm-statut{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:600;background:#eef4f7;color:var(--encre)}
+.adm-statut.ok{background:#e7f7f0;color:#1f7a55}
+.adm-statut.ko{background:#fbeee6;color:#b4632a}
+.adm-fermetures{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.adm-fermetures li{border:1.5px solid var(--ligne);border-radius:999px;padding:6px 8px 6px 14px;display:flex;gap:8px;align-items:center}
+.adm-fermetures button{border:0;background:transparent;cursor:pointer;font-size:15px}
+.adm .cmd td .btn{width:auto;padding:6px 12px;font-size:13px;margin:2px}

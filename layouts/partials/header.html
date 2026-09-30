@@ -30,7 +30,7 @@
       </div>
       {{ end }}
       {{ with site.GetPage "/contact" }}<a href="{{ .RelPermalink }}"{{ if eq $.Permalink .Permalink }} aria-current="page"{{ end }}>Contact</a>{{ end }}
-      <a href="#" onclick="ouvrirCompte();return false">Espace client</a>
+      <a href="#" class="lien-compte" onclick="ouvrirCompte();return false">Espace client</a>
     </nav>
     <div class="nav-actions">
       <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Générer un devis</button>

@@ -1,0 +1,15 @@
+# Configuration Supabase CLI (déploiement des fonctions).
+# Les fonctions vérifient elles-mêmes la session de l'utilisateur quand c'est nécessaire.
+project_id = "edenel-nettoyage"
+
+[functions.rdv]
+verify_jwt = false
+
+[functions.commande]
+verify_jwt = false
+
+[functions.message]
+verify_jwt = false
+
+[functions.admin]
+verify_jwt = false

@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: {{ "/merci/" | relURL }}
+Disallow: {{ "/admin/" | relURL }}
 
 Sitemap: {{ "sitemap.xml" | absURL }}

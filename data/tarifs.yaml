@@ -11,7 +11,8 @@ tva: 0.20
 majorationDimanche: 0.10
 remiseFidelite: 0.08
 supplementChantier: 5 # € / h en plus pour le ménage fin de chantier
-deplacement: 15       # € HT par commande
+deplacement: 15       # € HT par intervention = un déplacement (même date + même adresse), quel que soit le nombre de prestations ou de commandes
+deplacementOffertDes: 0  # € HT — frais de déplacement offerts quand les prestations d'une même intervention atteignent ce montant HT (0 = jamais offerts)
 produitsEntretien: 12 # € HT par prestation de ménage (avance obligatoire)
 produitsToilette: 28  # € HT — option
 laverieParLit: 6      # € HT par lit, pour toute prestation de linge
@@ -114,8 +115,8 @@ notes:
   - "Lavage-séchage hors repassage. Le repassage doit être commandé en supplément."
   - "Ménage fin de chantier : hors linge et hors nettoyage des vitres. Si besoin, commander en supplément : Laverie / Linge, Nettoyage des vitres et produit nettoyant pour vitres."
   - "Estimation du coût des machines à la laverie : 6 € HT par lit × nombre de lits proposés par le logement."
-  - "La durée minimum d'une intervention est de 1 heure, à laquelle s'ajoutent systématiquement les frais de déplacement de 15 € HT par commande."
-  - "Quel que soit le nombre d'heures commandées, des frais de déplacement de 15 € HT sont systématiquement ajoutés par commande."
+  - "La durée minimum d'une intervention est de 1 heure, à laquelle s'ajoutent systématiquement les frais de déplacement de 15 € HT par intervention (même date et même adresse, quel que soit le nombre de prestations)."
+  - "Quel que soit le nombre d'heures commandées, des frais de déplacement de 15 € HT sont ajoutés une seule fois par intervention : plusieurs prestations commandées pour la même date et la même adresse ne comptent qu'un déplacement."
   - "Estimations — produits à la charge du donneur d'ordre, achetés par l'intervenant(e)."
   - "La salle à manger ouverte sur le salon compte pour une pièce entière. T6 et plus, ou toute autre prestation : sur devis — contactez-nous."
 
@@ -163,7 +164,7 @@ bureaux:
   ponctuel:
     - nom: "Nettoyage de bureaux"
       taux: 32
-      note: "Intervention ponctuelle (petites surfaces, vitrines, remise en propreté) — minimum 2 h, + frais de déplacement 15 € HT par commande."
+      note: "Intervention ponctuelle (petites surfaces, vitrines, remise en propreté) — minimum 2 h, + frais de déplacement 15 € HT par intervention."
     - nom: "Vitrerie de bureaux (à hauteur humaine)"
       taux: 35
       note: "En supplément d'un contrat ou en ponctuel."
@@ -196,3 +197,44 @@ copro:
   containers: 100
   vitrerie: 150
   remiseAnnuelle: 0.05
+
+# ---------------------------------------------------------------------
+#  MOQUETTES, TAPIS & CANAPÉS — injection-extraction (prix à l'unité)
+#  ⚠ PRIX PROVISOIRES À FAIRE VALIDER PAR EDENEL AVANT MISE EN LIGNE.
+#  prix: 0 → l'article s'affiche « sur devis » et n'est pas chiffré.
+#  Le délai de réservation ne s'applique pas ; la majoration dimanche /
+#  jour férié et les frais de déplacement s'appliquent.
+# ---------------------------------------------------------------------
+textile:
+  minimum: 80           # € HT — montant minimum d'une intervention textile (hors déplacement)
+  articles:
+    - nom: "Canapé 2 places"
+      unite: "pièce"
+      prix: 69
+    - nom: "Canapé 3 places"
+      unite: "pièce"
+      prix: 89
+    - nom: "Canapé d'angle / 4-5 places"
+      unite: "pièce"
+      prix: 119
+    - nom: "Fauteuil"
+      unite: "pièce"
+      prix: 39
+    - nom: "Chaise en tissu"
+      unite: "pièce"
+      prix: 12
+    - nom: "Tête de lit"
+      unite: "pièce"
+      prix: 35
+    - nom: "Matelas 1 place"
+      unite: "pièce"
+      prix: 45
+    - nom: "Matelas 2 places"
+      unite: "pièce"
+      prix: 65
+    - nom: "Tapis"
+      unite: "m²"
+      prix: 15
+    - nom: "Moquette"
+      unite: "m²"
+      prix: 5

@@ -50,7 +50,7 @@
     <!-- 2 · Heures minimum -->
     <div class="bloc-tarif" id="heures-minimum">
       <h2>2 · Temps passé — nombre d'heures minimum à commander</h2>
-      <p class="sous">Par type de logement et par prestation. La durée minimum d'une intervention est de 1 heure, à laquelle s'ajoutent systématiquement les frais de déplacement de {{ $t.deplacement }} € HT par commande.</p>
+      <p class="sous">Par type de logement et par prestation. La durée minimum d'une intervention est de 1 heure, à laquelle s'ajoutent systématiquement les frais de déplacement de {{ $t.deplacement }} € HT par intervention (même date et même adresse, quel que soit le nombre de prestations).</p>
       <div class="defile">
         <table class="grille">
           <thead><tr><th>Type de logement</th>{{ range $t.prestations }}<th>{{ .nom }}{{ with .note }} <sup>{{ . }}</sup>{{ end }}</th>{{ end }}</tr></thead>
@@ -101,12 +101,12 @@
 
     <!-- 5 · Suppléments -->
     <div class="bloc-tarif" id="supplements">
-      <h2>5 · Suppléments — par commande ou par prestation</h2>
+      <h2>5 · Suppléments — par intervention ou par prestation</h2>
       <div class="defile">
         <table class="grille">
           <thead><tr><th>Supplément</th><th>Montant HT</th></tr></thead>
           <tbody>
-            <tr><td class="txt"><strong>Obligatoire</strong> — Frais de déplacement, quel que soit le nombre d'heures <sup>8</sup></td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.deplacement }} / commande</td></tr>
+            <tr><td class="txt"><strong>Obligatoire</strong> — Frais de déplacement, quel que soit le nombre d'heures — comptés une seule fois pour toutes les prestations réalisées le même jour à la même adresse{{ if gt $t.deplacementOffertDes 0 }}, et offerts dès {{ lang.FormatCurrency 0 "EUR" $t.deplacementOffertDes }} HT de prestations sur l'intervention{{ end }} <sup>8</sup></td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.deplacement }} / intervention</td></tr>
             <tr><td class="txt"><strong>Obligatoire avec toute prestation de linge</strong> — Frais de laverie (coût des machines lavage-séchage) <sup>6</sup></td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.laverieParLit }} / lit × nombre de lits</td></tr>
             <tr><td class="txt"><strong>Obligatoire avec toute prestation de ménage</strong> — Avance produits d'entretien (nettoyant, anti-calcaire, liquide vaisselle, dégraissant, sacs poubelle, éponges…) <sup>9</sup>. Non facturée si les produits sont déjà achetés et livrés dans le logement.</td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.produitsEntretien }} / prestation</td></tr>
             <tr><td class="txt"><strong>Optionnel</strong> — Produits de toilette &amp; consommables : épicerie, café, essuie-tout, papier toilette, lave-main, désodorisant <sup>9</sup></td><td class="fort">{{ lang.FormatCurrency 2 "EUR" $t.produitsToilette }}</td></tr>
@@ -161,6 +161,25 @@
         </table>
       </div>
     </div>
+
+    <!-- 8 · Moquettes, tapis & canapés -->
+    {{ with $t.textile }}
+    <div class="bloc-tarif" id="moquettes-canapes">
+      <h2>8 · Moquettes, tapis &amp; canapés — injection-extraction</h2>
+      <p class="sous">Shampouinage par injection-extraction, détachage ciblé et désodorisation, sur site. Prix à la pièce ou au m², quel que soit le délai de réservation ; majoration de {{ lang.FormatPercent 0 (mul $t.majorationDimanche 100) }} les dimanches et jours fériés. Minimum d'intervention : {{ lang.FormatCurrency 2 "EUR" .minimum }} HT, hors frais de déplacement.</p>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Article</th><th>Unité</th><th>Prix HT</th></tr></thead>
+          <tbody>
+            {{ range .articles }}
+            <tr><td class="txt"><strong>{{ .nom }}</strong></td><td>€ / {{ .unite }}</td><td class="fort">{{ if gt .prix 0 }}{{ lang.FormatCurrency 2 "EUR" .prix }} / {{ .unite }}{{ else }}Sur devis{{ end }}</td></tr>
+            {{ end }}
+            <tr><td class="txt"><strong>Moquette de couloir d'hôtel, grandes surfaces, programme annuel</strong></td><td>€ / m²</td><td class="fort">Sur devis</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{ end }}
 
     <div class="cta-article espace-haut-l">
       <div>

@@ -216,7 +216,9 @@ footer a:hover{text-decoration:underline}
 .bc-onglets{display:flex;gap:8px;margin-bottom:18px}
 .bc-onglet{flex:1;font-family:var(--display);font-weight:600;font-size:13.5px;border:1.5px solid var(--ligne);background:var(--fond);color:var(--texte);border-radius:10px;padding:10px 8px;cursor:pointer}
 .bc-onglet.actif{background:var(--encre);border-color:var(--encre);color:#fff}
-.bc-ligne{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+.bc-onglets.univers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:640px){.bc-onglets.univers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bc-ligne{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr))}
 .bc-ligne .large{grid-column:1 / -1}
 .bc-info{font-size:13px;color:var(--petrole);background:var(--ecume);border-radius:10px;padding:10px 14px;margin-top:4px}
 .bc-total{margin-top:16px;border-top:1.5px solid var(--ligne);padding-top:14px;display:grid;gap:5px;font-size:14.5px}

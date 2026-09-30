@@ -10,6 +10,7 @@ serviceType: "Entretien des parties communes de copropriétés"
 prixBase: 250
 uniteprix: "mois HT (copropriété de moins de 10 lots, 1 passage par semaine)"
 ancreTarifs: coproprietes
+simulateur: copro
 resume: "Halls, escaliers, ascenseurs, containers, vitrerie des parties communes : un contrat clair pour syndics, avec passages tracés."
 tarifs:
   - label: "Moins de 10 lots (1 passage/sem.)"

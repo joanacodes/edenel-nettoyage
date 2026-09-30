@@ -6,7 +6,7 @@
     <h1>{{ .Title }}</h1>
     {{ with .Params.chapo | default .Description }}<p class="chapo">{{ . | safeHTML }}</p>{{ end }}
     <div class="hero-ctas espace-haut">
-      <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Combien ça coûte ?</button>
+      <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true{{ with .Params.simulateur }}, '{{ . }}'{{ end }})">Combien ça coûte ?</button>
       <button class="btn btn-ligne" type="button" onclick="ouvrirRdv()">Prendre rendez-vous</button>
     </div>
   </div>
@@ -43,14 +43,23 @@
 
     <aside class="encart">
       <h3>Tarifs indicatifs HT</h3>
+      {{ if and (eq .Params.simulateur "textile") $t.textile }}
+      <ul class="encart-tarifs">
+        {{ range $t.textile.articles }}<li><span>{{ .nom }}</span><strong>{{ if gt .prix 0 }}{{ lang.FormatCurrency 0 "EUR" .prix }} / {{ .unite }}{{ else }}Sur devis{{ end }}</strong></li>
+        {{ end }}
+        <li><span>Minimum d'intervention</span><strong>{{ lang.FormatCurrency 0 "EUR" $t.textile.minimum }}</strong></li>
+      </ul>
+      <p class="aide">Hors frais de déplacement ({{ $t.deplacement }} € HT par intervention, une seule fois par date et adresse) et TVA 20 %.</p>
+      {{ else }}
       {{ with .Params.tarifs }}
       <ul class="encart-tarifs">
         {{ range . }}<li><span>{{ .label }}</span><strong>{{ .montant }}</strong></li>
         {{ end }}
       </ul>
-      <p class="aide">Hors frais de déplacement ({{ $t.deplacement }} € HT par commande) et TVA 20 %. Tarif Fidélité −8 % dès la 5ᵉ commande.</p>
+      <p class="aide">Hors frais de déplacement ({{ $t.deplacement }} € HT par intervention, une seule fois par date et adresse) et TVA 20 %. Tarif Fidélité −8 % dès la 5ᵉ commande.</p>
       {{ end }}
-      <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true)">Simuler mon devis</button>
+      {{ end }}
+      <button class="btn btn-plein" type="button" onclick="ouvrirCommande(true{{ with .Params.simulateur }}, '{{ . }}'{{ end }})">Simuler mon devis</button>
       {{ with site.GetPage "/tarifs" }}<a class="btn btn-ligne" href="{{ .RelPermalink }}{{ with $.Params.ancreTarifs }}#{{ . }}{{ end }}">Voir la grille complète</a>{{ end }}
       <ul>
         <li><span class="puce-chev"></span>7j/7, dimanches et jours fériés compris</li>

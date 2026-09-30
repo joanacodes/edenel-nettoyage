@@ -10,6 +10,7 @@ serviceType: "Nettoyage de bureaux et locaux professionnels"
 prixBase: 32
 uniteprix: "heure HT (intervention ponctuelle, minimum 2 h)"
 ancreTarifs: bureaux
+simulateur: bureaux
 resume: "Entretien régulier de vos locaux professionnels, tôt le matin, le soir ou le week-end. Devis gratuit, contrat sans surprise."
 tarifs:
   - label: "Intervention ponctuelle (min. 2 h)"

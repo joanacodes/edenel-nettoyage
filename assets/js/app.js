@@ -16,7 +16,9 @@
 {{- $bTranches := slice -}}
 {{- range $t.bureaux.contrat }}{{ $bTranches = $bTranches | append (dict "max" .max "prix" .prix "freq" .frequence) }}{{ end -}}
 {{- $cTailles := slice -}}
-{{- range $t.copro.tailles }}{{ $cTailles = $cTailles | append (dict "n" .nom "prix" .prix) }}{{ end }}
+{{- range $t.copro.tailles }}{{ $cTailles = $cTailles | append (dict "n" .nom "prix" .prix) }}{{ end -}}
+{{- $txArticles := slice -}}
+{{- with $t.textile }}{{ range .articles }}{{ $txArticles = $txArticles | append (dict "n" .nom "u" .unite "prix" .prix) }}{{ end }}{{ end }}
 
 /* ====== GRILLE TARIFAIRE (HT — source : data/tarifs.yaml, mise à jour {{ $t.miseAJour }}) ====== */
 var TARIF_BASE = {{ $t.base }};
@@ -25,6 +27,7 @@ var MAJO_DIM_FERIE = {{ $t.majorationDimanche }};
 var REMISE_FIDELITE = {{ $t.remiseFidelite }};
 var SUP_CHANTIER = {{ $t.supplementChantier }};
 var DEPL_HT = {{ $t.deplacement }};
+var DEPL_OFFERT_DES = {{ $t.deplacementOffertDes | default 0 }};
 var PROD_ENTRETIEN = {{ $t.produitsEntretien }};
 var PROD_TOILETTE = {{ $t.produitsToilette }};
 var COEFS = {{ $coefs | jsonify | safeJS }};
@@ -45,6 +48,11 @@ var COPRO = {
   containers: {{ $t.copro.containers }},
   vitrerie: {{ $t.copro.vitrerie }},
   remiseAnnuelle: {{ $t.copro.remiseAnnuelle }}
+};
+
+var TEXTILE = {
+  articles: {{ $txArticles | jsonify | safeJS }},
+  minimum: {{ with $t.textile }}{{ .minimum | default 0 }}{{ else }}0{{ end }}
 };
 
 /* ====== IDENTITÉ & RÉGLAGES (source : hugo.toml) ====== */
@@ -103,6 +111,7 @@ function initCommande(){
   var auj = new Date().toISOString().slice(0, 10);
   el("bc-date").min = auj;
   el("bp-date").min = auj;
+  if(el("tx-date")) el("tx-date").min = auj;
   majMinimum(); choisirUnivers(univers);
 }
 function choisirFormule(f){
@@ -165,8 +174,10 @@ function detailsCalcul(){
   var prodOk = PRESTAS[s].menage && el("bc-prodok").checked;
   if(PRESTAS[s].menage && !prodOk){ supp += PROD_ENTRETIEN; suppTxt.push("produits d'entretien " + eur(PROD_ENTRETIEN)); }
   var opt = el("bc-toilette").checked ? PROD_TOILETTE : 0;
-  var ht = r2(prest + majo + supp + opt + DEPL_HT);
-  return {taux: taux, h: h, tier: t, prest: prest, majo: majo, supp: r2(supp), suppTxt: suppTxt, opt: opt, ht: ht, prodOk: prodOk, s: s, l: l, dateStr: dateStr};
+  var horsDepl = r2(prest + majo + supp + opt);
+  var depl = deplacementSimule(dateStr, el("bc-adresse").value, horsDepl);
+  var ht = r2(horsDepl + depl.montant);
+  return {taux: taux, h: h, tier: t, prest: prest, majo: majo, supp: r2(supp), suppTxt: suppTxt, opt: opt, ht: ht, horsDepl: horsDepl, depl: depl, prodOk: prodOk, s: s, l: l, dateStr: dateStr};
 }
 
 function calculer(){
@@ -179,7 +190,7 @@ function calculer(){
 }
 function afficherTotaux(d){
   if(!d){
-    ["t-prest", "t-supp", "t-opt", "t-ht", "t-tva", "t-ttc"].forEach(function(i){ el(i).textContent = "—"; });
+    ["t-prest", "t-supp", "t-opt", "t-depl", "t-ht", "t-tva", "t-ttc"].forEach(function(i){ el(i).textContent = "—"; });
     el("lig-majo").hidden = el("lig-supp").hidden = el("lig-opt").hidden = true; return;
   }
   el("t-prest").textContent = eur(d.prest);
@@ -187,6 +198,8 @@ function afficherTotaux(d){
   el("lig-supp").hidden = d.supp === 0; el("t-supp").textContent = eur(d.supp);
   el("lbl-supp").textContent = "Suppléments obligatoires (" + d.suppTxt.join(" + ") + ")";
   el("lig-opt").hidden = d.opt === 0; el("t-opt").textContent = eur(d.opt);
+  el("t-depl").textContent = eur(d.depl.montant);
+  el("lbl-depl").textContent = d.depl.libelle;
   var tva = r2(d.ht * TVA);
   el("t-ht").textContent = eur(d.ht);
   el("t-tva").textContent = eur(tva);
@@ -207,7 +220,7 @@ function itemCourant(){
       + (d.opt > 0 ? " · option produits de toilette" : ""),
     date: d.dateStr, heure: el("bc-heure").value, h: d.h, adresse: adresse,
     commentaire: el("bc-comment").value.trim(),
-    ht: r2(d.ht - DEPL_HT)   /* le déplacement est compté par commande (date + adresse) dans le panier */
+    ht: d.horsDepl   /* le déplacement est compté une fois par intervention (date + adresse) dans le panier */
   };
 }
 
@@ -223,15 +236,46 @@ function ajouterAuPanier(){
   panier.push(itemCourant());
   majPanier(); fermerCommande(); ouvrirPanier();
 }
-function nbDeplacements(lignes){
-  var cles = {};
-  lignes.forEach(function(it){ if(it.date) cles[it.date + "|" + it.adresse.toLowerCase()] = 1; });
-  return Object.keys(cles).length;
+/* ====== FRAIS DE DÉPLACEMENT : un seul par intervention (même date + même adresse) ======
+   - plusieurs prestations le même jour à la même adresse = 1 déplacement ;
+   - une intervention déjà commandée depuis cet appareil (même date + adresse) n'est pas refacturée ;
+   - offerts si les prestations de l'intervention atteignent DEPL_OFFERT_DES € HT (0 = jamais). */
+function cleTrajet(date, adresse){ return date + "|" + String(adresse || "").toLowerCase().replace(/[\s,]+/g, " ").trim(); }
+function trajetsDejaCommandes(){
+  var deja = {};
+  lireCmds().forEach(function(r){ (r.trajets || []).forEach(function(k){ deja[k] = 1; }); });
+  return deja;
+}
+function calculDeplacements(lignes){
+  var groupes = {}, deja = trajetsDejaCommandes();
+  lignes.forEach(function(it){ if(it.date && !it.mensuel){ var k = cleTrajet(it.date, it.adresse); groupes[k] = r2((groupes[k] || 0) + it.ht); } });
+  var cles = Object.keys(groupes);
+  var payants = cles.filter(function(k){ return !deja[k] && !(DEPL_OFFERT_DES > 0 && groupes[k] >= DEPL_OFFERT_DES); });
+  return {cles: cles, nb: payants.length, total: r2(payants.length * DEPL_HT), gratuits: cles.length - payants.length};
+}
+/* Déplacement affiché dans le simulateur pour une prestation en cours de saisie */
+function deplacementSimule(date, adresse, htPrestation){
+  var base = "Frais de déplacement (" + eur(DEPL_HT) + " HT par intervention)";
+  adresse = String(adresse || "").trim();
+  if(date && adresse){
+    var k = cleTrajet(date, adresse), deja = trajetsDejaCommandes(), cumul = htPrestation;
+    var dansPanier = panier.some(function(it){ if(it.date && !it.mensuel && cleTrajet(it.date, it.adresse) === k){ cumul += it.ht; return true; } return false; });
+    if(deja[k]) return {montant: 0, libelle: "Frais de déplacement — déjà facturés sur votre commande pour cette date et cette adresse"};
+    if(dansPanier) return {montant: 0, libelle: "Frais de déplacement — déjà comptés dans votre panier (même date, même adresse)"};
+    if(DEPL_OFFERT_DES > 0 && cumul >= DEPL_OFFERT_DES) return {montant: 0, libelle: "Frais de déplacement offerts (dès " + eur(DEPL_OFFERT_DES) + " HT de prestations)"};
+  }
+  return {montant: DEPL_HT, libelle: base};
+}
+var PANIER_KEY = "edenel_panier";
+function sauverPanier(){ try{ localStorage.setItem(PANIER_KEY, JSON.stringify(panier)); }catch(e){} }
+function chargerPanier(){
+  try{ var p = JSON.parse(localStorage.getItem(PANIER_KEY)); if(Array.isArray(p)) panier = p; }catch(e){}
 }
 function majPanier(){
+  sauverPanier();
   var n = panier.length;
   el("cpt-panier").textContent = n;
-  if(el("cpt-panier2")) el("cpt-panier2").textContent = n;
+  ["cpt-panier2", "cpt-panier3"].forEach(function(i){ if(el(i)) el(i).textContent = n; });
   var b = el("badge-panier"); b.hidden = n === 0; b.textContent = n;
   var liste = el("liste-panier");
   if(n === 0){ liste.innerHTML = '<p class="panier-vide">Votre panier est vide.</p>'; }
@@ -242,8 +286,8 @@ function majPanier(){
         '</div><div class="pi-prix">' + eur(it.ht) + ' HT</div><button class="pi-suppr" type="button" aria-label="Retirer" onclick="retirer(' + i + ')">✕</button></div>';
     }).join("");
   }
-  var nbDepl = nbDeplacements(panier);
-  var depl = r2(nbDepl * DEPL_HT);
+  var dp = calculDeplacements(panier);
+  var nbDepl = dp.nb, depl = dp.total;
   var ht = r2(panier.reduce(function(s, it){ return s + it.ht; }, 0) + depl);
   var tva = r2(ht * TVA), ttc = r2(ht + tva);
   el("p-nbdepl").textContent = nbDepl;
@@ -257,7 +301,8 @@ function retirer(i){ panier.splice(i, 1); majPanier(); }
 /* ====== OUVERTURE / FERMETURE DES FENÊTRES ====== */
 function ouvrir(id){ el(id).classList.add("ouvert"); fermerMenu(); }
 function fermer(id){ el(id).classList.remove("ouvert"); }
-function ouvrirCommande(simu){
+function ouvrirCommande(simu, u){
+  if(u && el("zone-" + u)) univers = u;
   el("titre-commande").textContent = simu === true ? "Combien ça coûte ?" : "Passer commande";
   el("sous-commande").textContent = simu === true
     ? "Simulez votre devis en quelques clics : les montants HT se calculent instantanément (TVA de 20 % ajoutée au total). Si le prix vous convient, ajoutez la prestation au panier."
@@ -285,9 +330,10 @@ function ouvrirPaiement(){
   if(!telNational(el("pan-tel").value)){
     note("pan-note", "⚠ Téléphone mobile obligatoire pour commander : choisissez l'indicatif pays puis saisissez votre numéro commençant par 0 (ex. : 0612345678).", ROUGE); return;
   }
-  derniereCommande = enregistrerCommande();
+  derniereCommande = preparerCommande();   /* enregistrée dans l'historique seulement une fois transmise */
   el("paiement-montant").textContent = "Commande " + derniereCommande.id + " — total " + eur(derniereCommande.ttc) + " TTC";
   el("paiement-choix").hidden = false; el("paiement-succes").hidden = true;
+  var bc = el("btn-confirmer"); if(bc) bc.disabled = false;
   note("note-paiement", "", "");
   fermerPanier(); ouvrir("modal-paiement");
 }
@@ -310,6 +356,7 @@ function confirmerCommande(){
     el("paiement-recap").textContent = "Commande " + rec.id + " — " + eur(rec.ttc) + " TTC — intervention le " + frDate(premier.date) + " à " + heure + (tries.length > 1 ? " (+" + (tries.length - 1) + " autre(s))" : "");
     boutonsAgenda("paiement-agenda", evClient, "intervention-edenel-" + rec.id + ".ics");
     note("paiement-succes-note", msg, couleur || VERT);
+    sauverCommande(rec);
     panier = []; majPanier();
   }
   if(estLocal()){
@@ -317,6 +364,7 @@ function confirmerCommande(){
     succes("Mode test local : votre messagerie s'est ouverte avec la commande pré-remplie. En ligne, l'envoi est automatique."); return;
   }
   note("note-paiement", "Transmission de votre commande…", GRIS);
+  var bc = el("btn-confirmer"); if(bc) bc.disabled = true;
   envoyerFormulaire({
     _subject: "COMMANDE " + rec.id + " — " + (compte.nom || "") + " — " + eur(rec.ttc) + " TTC — le " + frDate(premier.date),
     email: compte.email,
@@ -330,7 +378,13 @@ function confirmerCommande(){
   }).then(function(){
     succes("✓ Commande transmise. Un récapitulatif vient de vous être envoyé par email ; nous vous confirmons l'heure exacte d'intervention. Enregistrez-la dès maintenant :");
   }).catch(function(){
-    succes("⚠ L'envoi automatique n'a pas abouti — contactez-nous à " + LEGAL.email + " avec la référence " + rec.id + ". Vous pouvez déjà enregistrer l'intervention :", ROUGE);
+    if(bc) bc.disabled = false;
+    /* Échec : le panier est conservé, le client peut réessayer ou envoyer la commande par email */
+    var mail = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("COMMANDE " + rec.id + " — " + (compte.nom || ""))
+      + "&body=" + encodeURIComponent("Client : " + (compte.nom || "") + " — " + (compte.email || "") + " — " + rec.tel + "\nNuméro client : " + (rec.numClient || "—") + "\n\n" + detailsTxt + "\n\nTotal : " + eur(rec.ht) + " HT / " + eur(rec.ttc) + " TTC");
+    var n = el("note-paiement");
+    n.style.color = ROUGE;
+    n.innerHTML = "⚠ La transmission automatique n'a pas abouti : votre commande n'est pas encore enregistrée (votre panier est conservé). Réessayez dans un instant, ou <a class=\"lien\" href=\"" + echapper(mail) + "\">envoyez-la-nous par email en un clic</a> (" + echapper(LEGAL.email) + ", référence " + echapper(rec.id) + ").";
   });
 }
 function fermerPaiement(){ fermer("modal-paiement"); }
@@ -438,13 +492,24 @@ function envoyerRdv(){
     succes("⚠ L'envoi automatique n'a pas abouti — écrivez-nous à " + LEGAL.email + " en indiquant « RDV " + dateFr + " à " + rdvHeure + " ». Vous pouvez déjà enregistrer le créneau :", ROUGE);
   });
 }
-/* ====== ENVOI DES FORMULAIRES (FormSubmit, mode AJAX) ====== */
+/* ====== ENVOI DES FORMULAIRES (FormSubmit, mode AJAX) ======
+   FormSubmit répond HTTP 200 même quand l'envoi est refusé (formulaire pas encore activé,
+   adresse bloquée…) : seul le champ JSON « success » indique si l'email est réellement parti. */
 function envoyerFormulaire(charge){
   return fetch(FORMSUBMIT, {
     method: "POST",
     headers: {"Content-Type": "application/json", "Accept": "application/json"},
-    body: JSON.stringify(Object.assign({_captcha: "false"}, charge))
-  }).then(function(r){ if(!r.ok) throw new Error("FormSubmit " + r.status); return r; });
+    body: JSON.stringify(Object.assign({_captcha: "false", _template: "table"}, charge))
+  }).then(function(r){
+    if(!r.ok) throw new Error("FormSubmit " + r.status);
+    return r.json().catch(function(){ return {}; });
+  }).then(function(rep){
+    if(String(rep.success) !== "true"){
+      if(window.console) console.warn("FormSubmit a refusé l'envoi :", rep.message || rep);
+      throw new Error(rep.message || "FormSubmit : envoi refusé");
+    }
+    return rep;
+  });
 }
 
 /* ====== AGENDA : « Ajouter à Google Agenda » (1 clic) et fichier .ics (Apple / Outlook) ====== */
@@ -640,12 +705,14 @@ function genererDevis(){
   if(!prenom || !nom || email.indexOf("@") < 1){
     note("dv-note", "⚠ Merci d'indiquer votre prénom, votre nom et un email valide (le devis vous est envoyé par email).", ROUGE); return;
   }
-  var lignes = panier.slice().concat(lignesCourantes());
+  var dejaPanier = {};
+  panier.forEach(function(it){ dejaPanier[JSON.stringify([it.titre, it.detail, it.date, it.adresse, it.ht])] = 1; });
+  var lignes = panier.slice().concat(lignesCourantes().filter(function(it){ return !dejaPanier[JSON.stringify([it.titre, it.detail, it.date, it.adresse, it.ht])]; }));
   if(lignes.length === 0){
     note("dv-note", "⚠ Configurez une prestation ci-dessus (champs requis selon l'univers choisi) ou ajoutez-en au panier.", ROUGE); return;
   }
-  var nbDepl = nbDeplacements(lignes);
-  var depl = r2(nbDepl * DEPL_HT);
+  var dp = calculDeplacements(lignes);
+  var nbDepl = dp.nb, depl = dp.total;
   var htMensuel = r2(lignes.filter(function(it){ return it.mensuel; }).reduce(function(s, it){ return s + it.ht; }, 0));
   var ht = r2(lignes.filter(function(it){ return !it.mensuel; }).reduce(function(s, it){ return s + it.ht; }, 0) + depl);
   var tva = r2(ht * TVA), ttc = r2(ht + tva);
@@ -670,7 +737,7 @@ function genererDevis(){
       var quand = it.date ? "Le " + frDate(it.date) + (it.heure ? " à " + it.heure : "") + " — " : "";
       return [it.titre + "\n" + it.detail + "\n" + quand + it.adresse, eur(it.ht) + (it.mensuel ? " /mois" : "")];
     });
-    rows.push(["Frais de déplacement — " + nbDepl + " intervention(s) × " + eur(DEPL_HT) + " HT", eur(depl)]);
+    if(dp.cles.length) rows.push(["Frais de déplacement — " + nbDepl + " intervention(s) × " + eur(DEPL_HT) + " HT (un seul déplacement par date et par adresse" + (dp.gratuits ? " ; " + dp.gratuits + " déjà facturé(s) ou offert(s)" : "") + ")", eur(depl)]);
     y = pdfTableau(doc, y, [{titre: "Prestation", largeur: 134}, {titre: "Montant HT", largeur: 40, align: "right", gras: true}], rows);
     y = pdfTotaux(doc, y, [["Total HT", eur(ht)], ["TVA (20 %)", eur(tva)], ["Total TTC", eur(ttc), true]]);
     if(htMensuel > 0) y = pdfEncadre(doc, y, "Contrats mensuels", eur(htMensuel) + " HT/mois, soit " + eur(r2(htMensuel * (1 + TVA))) + " TTC/mois — estimation à confirmer après visite gratuite.");
@@ -851,6 +918,8 @@ function lireCmds(){ return lireJSON(CMD_KEY) || []; }
 
 function ouvrirCompte(){
   var c = lireJSON(COMPTE_KEY);
+  el("zone-import").hidden = true;
+  if(el("zone-transfert")) el("zone-transfert").hidden = true;
   if(c && compteConnecte){ afficherTableau(); el("zone-auth").hidden = true; el("zone-tableau").hidden = false; }
   else{
     el("zone-auth").hidden = false; el("zone-tableau").hidden = true;
@@ -863,11 +932,13 @@ function creerCompte(){
   if(!nom || email.indexOf("@") < 1 || pin.length < 4){ note("auth-note", "⚠ Merci d'indiquer votre nom, un email valide et un code d'au moins 4 chiffres.", ROUGE); return; }
   if(!valideTel(tel)){ note("auth-note", "⚠ Téléphone mobile obligatoire, au format indicatif pays + 0 (ex. : +33 0612345678) — il servira à la vérification en cas de code oublié.", ROUGE); return; }
   var initiales = nom.split(/\s+/).map(function(m){ return m.charAt(0).toUpperCase(); }).join("").slice(0, 4) || "CL";
-  var numero = initiales + "-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + Math.floor(10 + Math.random() * 90);
+  var numExistant = ((el("cp-numero") || {}).value || "").trim().toUpperCase();
+  if(numExistant && !/^[A-Z]{1,4}-?\d{6,8}(-?\d{1,3})?$/.test(numExistant)){ note("auth-note", "⚠ Numéro client non reconnu (format attendu : SH-20260724-41). Laissez le champ vide pour en obtenir un nouveau.", ROUGE); return; }
+  var numero = numExistant || (initiales + "-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + Math.floor(10 + Math.random() * 90));
   var compte = {nom: nom, email: email, pin: pin, tel: tel, numero: numero, cree: new Date().toISOString().slice(0, 10)};
   if(!ecrireJSON(COMPTE_KEY, compte)){ note("auth-note", "⚠ Impossible d'enregistrer sur cet appareil (navigation privée ?).", ROUGE); return; }
   compteConnecte = true; el("zone-auth").hidden = true; el("zone-tableau").hidden = false; afficherTableau();
-  var fiche = "NOUVEAU NUMÉRO CLIENT : " + numero + "\nNom : " + nom + "\nEmail : " + email + "\nTéléphone : " + tel + "\nCréé le : " + new Date().toLocaleDateString("fr-FR");
+  var fiche = (numExistant ? "COMPTE RECRÉÉ SUR UN NOUVEL APPAREIL — NUMÉRO CLIENT EXISTANT : " : "NOUVEAU NUMÉRO CLIENT : ") + numero + "\nNom : " + nom + "\nEmail : " + email + "\nTéléphone : " + tel + "\nCréé le : " + new Date().toLocaleDateString("fr-FR");
   if(estLocal()){
     location.href = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("RÉFÉRENTIEL CLIENT — " + numero) + "&body=" + encodeURIComponent(fiche);
   } else {
@@ -902,11 +973,87 @@ function seConnecter(){
     note("auth-note", "⚠ Email ou code secret incorrect.", ROUGE); return; }
   compteConnecte = true; el("zone-auth").hidden = true; el("zone-tableau").hidden = false; afficherTableau();
 }
-function seDeconnecter(){ compteConnecte = false; el("zone-tableau").hidden = true; el("zone-auth").hidden = false; }
+/* ====== UTILISER SON COMPTE SUR UN AUTRE APPAREIL ======
+   Le site n'a pas de serveur : le compte vit dans le navigateur. Pour le retrouver sur un
+   autre appareil, on génère un lien personnel qui contient le compte (sans le code secret)
+   et l'historique ; en l'ouvrant sur l'autre appareil, tout est recopié. */
+function b64urlEncode(txt){
+  var bin = unescape(encodeURIComponent(txt));
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64urlDecode(b){
+  b = b.replace(/-/g, "+").replace(/_/g, "/");
+  while(b.length % 4) b += "=";
+  return decodeURIComponent(escape(atob(b)));
+}
+var lienTransfertCourant = "";
+function lienTransfert(){
+  var c = lireJSON(COMPTE_KEY);
+  if(!c || !compteConnecte) return;
+  var charge = {v: 1, c: {nom: c.nom, email: c.email, tel: c.tel, numero: c.numero, cree: c.cree}, k: lireCmds()};
+  lienTransfertCourant = location.origin + location.pathname + "#compte=" + b64urlEncode(JSON.stringify(charge));
+  el("tr-lien").value = lienTransfertCourant;
+  el("tr-mail").href = "mailto:" + encodeURIComponent(c.email) + "?subject=" + encodeURIComponent("Mon compte " + LEGAL.marque + " — lien pour mon autre appareil")
+    + "&body=" + encodeURIComponent("Ouvrez ce lien sur votre téléphone ou votre autre ordinateur pour y retrouver votre compte (n° client " + c.numero + ") et votre historique :\n\n" + lienTransfertCourant + "\n\nNe transférez pas ce message : il contient vos coordonnées.");
+  el("tr-partager").hidden = !navigator.share;
+  note("tr-note", "");
+  el("zone-transfert").hidden = false;
+  el("zone-transfert").scrollIntoView({behavior: "smooth", block: "nearest"});
+}
+function copierTransfert(){
+  var ok = function(){ note("tr-note", "✓ Lien copié — collez-le dans un message à vous-même, puis ouvrez-le sur l'autre appareil.", VERT); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(lienTransfertCourant).then(ok, function(){ el("tr-lien").select(); document.execCommand("copy"); ok(); });
+  } else { el("tr-lien").select(); document.execCommand("copy"); ok(); }
+}
+function partagerTransfert(){
+  if(navigator.share) navigator.share({title: "Mon compte " + LEGAL.marque, url: lienTransfertCourant}).catch(function(){});
+}
+var importEnAttente = null;
+function detecterImport(){
+  var m = /^#compte=([A-Za-z0-9_-]+)$/.exec(location.hash);
+  if(!m) return;
+  try{
+    var d = JSON.parse(b64urlDecode(m[1]));
+    if(!d || !d.c || !d.c.email || !d.c.numero) throw new Error("lien incomplet");
+    importEnAttente = d;
+  }catch(e){ importEnAttente = null; }
+  try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+  el("zone-auth").hidden = true; el("zone-tableau").hidden = true; el("zone-import").hidden = false;
+  if(!importEnAttente){
+    el("imp-sous").textContent = "Ce lien de transfert est incomplet ou abîmé (il a peut-être été coupé par votre messagerie). Générez-en un nouveau depuis votre autre appareil.";
+    el("imp-pin").parentNode.hidden = true;
+  } else {
+    var existant = lireJSON(COMPTE_KEY);
+    el("imp-pin").parentNode.hidden = false;
+    el("imp-sous").textContent = "Transfert du compte de " + importEnAttente.c.nom + " (n° client " + importEnAttente.c.numero + ", " + (importEnAttente.k || []).length + " commande(s)) sur cet appareil."
+      + (existant && existant.numero !== importEnAttente.c.numero ? " ⚠ Le compte « " + existant.nom + " » déjà présent sur cet appareil sera remplacé." : "");
+  }
+  ouvrir("modal-compte");
+}
+function confirmerImport(){
+  var d = importEnAttente;
+  if(!d){ annulerImport(); return; }
+  var pin = el("imp-pin").value;
+  if(pin.length < 4){ note("imp-note", "⚠ Choisissez un code secret d'au moins 4 chiffres pour cet appareil.", ROUGE); return; }
+  var existant = lireJSON(COMPTE_KEY);
+  var cmds = (existant && existant.numero === d.c.numero) ? lireCmds() : [];
+  (d.k || []).forEach(function(r){ if(r && r.id && !cmds.some(function(x){ return x.id === r.id; })) cmds.push(r); });
+  var compte = Object.assign({}, d.c, {pin: pin});
+  if(!ecrireJSON(COMPTE_KEY, compte) || !ecrireJSON(CMD_KEY, cmds)){ note("imp-note", "⚠ Impossible d'enregistrer sur cet appareil (navigation privée ?).", ROUGE); return; }
+  importEnAttente = null;
+  compteConnecte = true; el("zone-import").hidden = true; el("zone-tableau").hidden = false; afficherTableau();
+}
+function annulerImport(){
+  importEnAttente = null;
+  el("zone-import").hidden = true; el("zone-auth").hidden = false;
+}
+function seDeconnecter(){ compteConnecte = false; el("zone-tableau").hidden = true; el("zone-transfert").hidden = true; el("zone-auth").hidden = false; }
 
-function enregistrerCommande(){
+function preparerCommande(){
   if(panier.length === 0) return null;
-  var depl = r2(nbDeplacements(panier) * DEPL_HT);
+  var dp = calculDeplacements(panier);
+  var depl = dp.total;
   var ht = r2(panier.reduce(function(s, it){ return s + it.ht; }, 0) + depl);
   var rec = {
     id: "CMD-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + Math.floor(100 + Math.random() * 900),
@@ -917,10 +1064,14 @@ function enregistrerCommande(){
     ht: ht, ttc: r2(ht * (1 + TVA)),
     heurePlan: "", tel: telComplet(),
     dateBR: null, statutP: "", statutF: "En attente",
-    numClient: (lireJSON(COMPTE_KEY) || {}).numero || ""
+    numClient: (lireJSON(COMPTE_KEY) || {}).numero || "",
+    trajets: dp.cles
   };
-  var l = lireCmds(); l.push(rec); ecrireJSON(CMD_KEY, l);
   return rec;
+}
+function sauverCommande(rec){
+  var l = lireCmds();
+  if(!l.some(function(r){ return r.id === rec.id; })){ l.push(rec); ecrireJSON(CMD_KEY, l); }
 }
 function statutAuto(r){
   if(r.statutP) return r.statutP;
@@ -991,13 +1142,76 @@ function pdfHistorique(){
 /* ====== UNIVERS BUREAUX & COPROPRIÉTÉS ====== */
 function choisirUnivers(u){
   univers = u;
-  ["menage", "bureaux", "copro"].forEach(function(x){
+  ["menage", "bureaux", "textile", "copro"].forEach(function(x){
+    if(!el("zone-" + x)) return;
     el("zone-" + x).hidden = x !== u;
     el("ong-u-" + x).classList.toggle("actif", x === u);
   });
   if(u === "menage") calculer();
   if(u === "bureaux") calcBureaux();
+  if(u === "textile") calcTextile();
   if(u === "copro") calcCopro();
+}
+/* ====== UNIVERS MOQUETTES & CANAPÉS (prix à la pièce / au m², data/tarifs.yaml → textile) ====== */
+function detailsTextile(){
+  var lignes = [], sousTotal = 0, surDevis = [];
+  TEXTILE.articles.forEach(function(a, i){
+    var q = Math.max(0, Math.floor(parseFloat((el("tx-q" + i) || {}).value) || 0));
+    if(!q) return;
+    if(a.prix > 0){ sousTotal += q * a.prix; lignes.push(q + (a.u === "m²" ? " m² de " + a.n.toLowerCase() : " × " + a.n) + " (" + eur(a.prix) + "/" + a.u + ")"); }
+    else surDevis.push(q + " × " + a.n);
+  });
+  sousTotal = r2(sousTotal);
+  var dateStr = el("tx-date").value;
+  if(!lignes.length && !surDevis.length) return null;
+  if(!lignes.length) return {erreur: "Ces articles sont chiffrés sur devis : générez votre devis ou prenez rendez-vous."};
+  var prest = Math.max(sousTotal, TEXTILE.minimum);
+  var minApplique = prest > sousTotal;
+  var majo = estDimancheOuFerie(dateStr) ? r2(prest * MAJO_DIM_FERIE) : 0;
+  var horsDepl = r2(prest + majo);
+  var depl = deplacementSimule(dateStr, el("tx-adresse").value, horsDepl);
+  return {lignes: lignes, surDevis: surDevis, sousTotal: sousTotal, prest: prest, minApplique: minApplique, majo: majo, horsDepl: horsDepl, depl: depl, ht: r2(horsDepl + depl.montant), dateStr: dateStr};
+}
+function calcTextile(){
+  if(!el("zone-textile")) return;
+  var d = detailsTextile(), det = el("tx-detail");
+  function vide(){ ["tx-prest", "tx-majo", "tx-depl", "tx-ht", "tx-tva", "tx-ttc"].forEach(function(i){ el(i).textContent = "—"; }); el("tx-lig-majo").hidden = true; }
+  if(!d){ det.textContent = "Indiquez au moins un article : le prix s'affiche instantanément."; vide(); return; }
+  if(d.erreur){ det.textContent = d.erreur; vide(); return; }
+  det.textContent = d.lignes.join(" + ")
+    + (d.minApplique ? " — minimum d'intervention appliqué : " + eur(TEXTILE.minimum) + " HT" : "")
+    + (d.surDevis.length ? " · sur devis : " + d.surDevis.join(", ") : "")
+    + (d.dateStr ? "" : " — indiquez la date souhaitée (majoration de 10 % les dimanches et jours fériés).");
+  el("tx-prest").textContent = eur(d.prest);
+  el("tx-lig-majo").hidden = d.majo === 0; el("tx-majo").textContent = eur(d.majo);
+  el("tx-depl").textContent = eur(d.depl.montant); el("tx-lbl-depl").textContent = d.depl.libelle;
+  var tva = r2(d.ht * TVA);
+  el("tx-ht").textContent = eur(d.ht); el("tx-tva").textContent = eur(tva); el("tx-ttc").textContent = eur(r2(d.ht + tva));
+}
+function itemTextile(){
+  var d = detailsTextile(), adresse = el("tx-adresse").value.trim();
+  if(!d || d.erreur || !d.dateStr || !adresse || joursAvant(d.dateStr) < 0) return null;
+  return {
+    titre: "Nettoyage moquettes, tapis & canapés — injection-extraction",
+    detail: d.lignes.join(" + ") + (d.minApplique ? " · minimum d'intervention " + eur(TEXTILE.minimum) + " HT" : "")
+      + (d.majo > 0 ? " · +10 % dim./férié" : "") + (d.surDevis.length ? " · sur devis (non chiffré) : " + d.surDevis.join(", ") : "")
+      + (el("tx-heure").value ? " · heure souhaitée : " + el("tx-heure").value : ""),
+    date: d.dateStr, heure: el("tx-heure").value, h: 2, adresse: adresse,
+    commentaire: el("tx-comment").value.trim(),
+    ht: d.horsDepl
+  };
+}
+function ajouterAuPanierTextile(){
+  var det = el("tx-detail"), d = detailsTextile();
+  if(!d){ det.textContent = "⚠ Indiquez au moins un article à nettoyer."; return; }
+  if(d.erreur){ det.textContent = d.erreur; return; }
+  if(!d.dateStr){ det.textContent = "⚠ Merci d'indiquer la date d'intervention souhaitée."; return; }
+  if(joursAvant(d.dateStr) < 0){ det.textContent = "⚠ La date choisie est passée — merci de sélectionner une date à venir."; return; }
+  if(!el("tx-adresse").value.trim()){ det.textContent = "⚠ Merci d'indiquer l'adresse de l'intervention."; return; }
+  if(!adresseValide("tx-adresse")){ det.textContent = "⚠ Adresse non reconnue : sélectionnez une adresse dans la liste proposée pendant la saisie."; return; }
+  if(!el("bc-cgv").checked){ det.textContent = "⚠ Merci d'accepter les Conditions Générales de Vente pour ajouter au panier."; return; }
+  panier.push(itemTextile());
+  majPanier(); fermerCommande(); ouvrirPanier();
 }
 function choisirModeBureaux(m){
   modeBureaux = m;
@@ -1015,8 +1229,9 @@ function calcBureaux(){
     el("b-lbl-ht").textContent = "Total HT"; el("b-lbl-ttc").textContent = "Total TTC";
     var s = el("bp-service").selectedIndex, h = Math.max(BUREAUX.minH, parseFloat(el("bp-heures").value) || 0);
     var taux = BUREAUX.ponctuel[s].taux;
-    det.textContent = BUREAUX.ponctuel[s].n + " : " + taux + " € HT/h × " + h + " h + frais de déplacement " + eur(DEPL_HT) + " HT.";
-    afficherBureaux(r2(taux * h + DEPL_HT), "");
+    var dpB = deplacementSimule(el("bp-date").value, el("bp-adresse").value, r2(taux * h));
+    det.textContent = BUREAUX.ponctuel[s].n + " : " + taux + " € HT/h × " + h + " h + " + dpB.libelle.charAt(0).toLowerCase() + dpB.libelle.slice(1) + " : " + eur(dpB.montant) + " HT.";
+    afficherBureaux(r2(taux * h + dpB.montant), "");
   } else {
     el("b-lbl-ht").textContent = "Forfait mensuel HT"; el("b-lbl-ttc").textContent = "Total TTC / mois";
     var m2 = parseFloat(el("bc-surface").value) || 0;
@@ -1101,6 +1316,10 @@ function lignesCourantes(){
       date: "", adresse: adr2 || "adresse à préciser", mensuel: true,
       ht: r2(m2 * t.prix * (el("bc-annuel-bur").checked ? 1 - BUREAUX.remiseAnnuelle : 1))}];
   }
+  if(univers === "textile"){
+    var tx = itemTextile();
+    return tx ? [tx] : [];
+  }
   /* copropriétés */
   var i = el("co-taille").selectedIndex, tc = COPRO.tailles[i], adr3 = el("co-adresse").value.trim() || "adresse à préciser";
   if(tc.prix === 0) return [];
@@ -1150,6 +1369,8 @@ function attacherAutocomplete(id){
               adresseOK[id] = true; inp.classList.add("ac-ok");
               liste.hidden = true;
               if(id === "bc-adresse") calculer();
+              if(id === "tx-adresse") calcTextile();
+              if(id === "bp-adresse") calcBureaux();
             };
             liste.appendChild(o);
           });
@@ -1160,10 +1381,14 @@ function attacherAutocomplete(id){
   });
   document.addEventListener("click", function(e){ if(e.target !== inp) liste.hidden = true; });
 }
-["bc-adresse", "bp-adresse", "bc-adr-bur", "co-adresse"].forEach(attacherAutocomplete);
+["bc-adresse", "bp-adresse", "bc-adr-bur", "co-adresse", "tx-adresse"].forEach(attacherAutocomplete);
 function adresseValide(id){
   return el(id).value.trim() !== "" && adresseOK[id] === true;
 }
 
 /* Ferme le menu mobile quand on suit un lien de navigation */
 document.querySelectorAll("nav.liens a").forEach(function(a){ a.addEventListener("click", fermerMenu); });
+
+/* Au chargement : panier conservé d'une page à l'autre, import d'un compte depuis un lien de transfert */
+chargerPanier(); majPanier();
+detecterImport();

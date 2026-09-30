@@ -9,3 +9,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 node_modules/
+
+# Supabase (local)
+supabase/.temp/
+supabase/functions/deno.lock

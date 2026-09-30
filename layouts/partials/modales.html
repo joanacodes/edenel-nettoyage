@@ -296,6 +296,7 @@
           </div>
         </div>
         <div class="champ"><label for="rdv-email">Email <span class="req">*</span></label><input id="rdv-email" type="email" required placeholder="Pour recevoir la confirmation" autocomplete="email"></div>
+        <div class="champ large"><label for="rdv-message">Objet du rendez-vous <span class="aide">(facultatif)</span></label><textarea id="rdv-message" rows="2" placeholder="Ex. : devis pour le ménage de 3 appartements Airbnb à Paris 11ᵉ"></textarea></div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-vert" type="button" onclick="envoyerRdv()">Confirmer ma demande de rendez-vous</button>
@@ -402,6 +403,36 @@
       <button class="lien-retour" type="button" onclick="codeOublie()">Code secret oublié ?</button>
     </div>
 
+    <!-- Mode serveur : connexion par code reçu par email -->
+    <div id="zone-connexion" hidden>
+      <p class="sous" id="cx-sous">Connectez-vous avec votre email : nous vous envoyons un code à 6 chiffres. Même compte sur votre ordinateur et votre téléphone.</p>
+      <div id="cx-etape-email">
+        <div class="bc-ligne">
+          <div class="champ large"><label for="cx-email">Votre email</label><input id="cx-email" type="email" autocomplete="email" placeholder="Ex. : marie@exemple.fr"></div>
+        </div>
+        <div class="modal-actions"><button class="btn btn-vert" type="button" id="cx-btn-code" onclick="envoyerCodeConnexion()">Recevoir mon code de connexion</button></div>
+      </div>
+      <div id="cx-etape-code" hidden>
+        <div class="bc-ligne">
+          <div class="champ large"><label for="cx-code">Code reçu par email</label><input id="cx-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456"></div>
+        </div>
+        <div class="modal-actions quatre">
+          <button class="btn btn-vert" type="button" id="cx-btn-valider" onclick="validerCodeConnexion()">Me connecter</button>
+          <button class="btn btn-ligne" type="button" onclick="changerEmailConnexion()">Changer d'email</button>
+        </div>
+      </div>
+      <div id="cx-etape-profil" hidden>
+        <p class="sous">Première connexion : complétez votre profil. Votre numéro client (nécessaire pour le Tarif Fidélité) est créé automatiquement.</p>
+        <div class="bc-ligne">
+          <div class="champ"><label for="cx-nom">Votre nom</label><input id="cx-nom" type="text" autocomplete="name" placeholder="Prénom Nom"></div>
+          <div class="champ"><label for="cx-tel">Téléphone mobile</label><input id="cx-tel" type="tel" autocomplete="tel" placeholder="06 12 34 56 78"></div>
+          <div class="champ large"><label for="cx-numero">Déjà client ? Votre numéro client <span class="aide">(facultatif)</span></label><input id="cx-numero" type="text" placeholder="Ex. : SH-20260724-41"></div>
+        </div>
+        <div class="modal-actions"><button class="btn btn-vert" type="button" onclick="enregistrerProfil()">Enregistrer mon profil</button></div>
+      </div>
+      <p class="modal-note" id="cx-note">Pas de mot de passe à retenir : un nouveau code vous est envoyé à chaque connexion.</p>
+    </div>
+
     <div id="zone-import" hidden>
       <p class="sous" id="imp-sous"></p>
       <div class="bc-ligne">
@@ -420,7 +451,7 @@
       <div class="cmd-defile"><table class="cmd" id="tb-table"></table></div>
       <div class="modal-actions quatre espace-haut">
         <button class="btn btn-teal" type="button" onclick="pdfHistorique()">Télécharger l'historique (PDF)</button>
-        <button class="btn btn-plein" type="button" onclick="lienTransfert()">Utiliser mon compte sur un autre appareil</button>
+        <button class="btn btn-plein" type="button" id="btn-transfert" onclick="lienTransfert()">Utiliser mon compte sur un autre appareil</button>
         <button class="btn btn-ligne" type="button" onclick="seDeconnecter()">Me déconnecter</button>
       </div>
       <div id="zone-transfert" class="bc-info espace-haut" hidden>
@@ -433,7 +464,7 @@
         </div>
         <p class="modal-note" id="tr-note"></p>
       </div>
-      <p class="modal-note">Historique enregistré localement dans votre navigateur — aucune facture n'est stockée sur le site. Le statut de la prestation et de la facture peuvent être ajustés via les menus de chaque ligne.</p>
+      <p class="modal-note" id="tb-note">Historique enregistré localement dans votre navigateur — aucune facture n'est stockée sur le site. Le statut de la prestation et de la facture peuvent être ajustés via les menus de chaque ligne.</p>
     </div>
   </div>
 </div>

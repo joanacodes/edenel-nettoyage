@@ -87,6 +87,11 @@ disableKinds = ["taxonomy", "term"]   # pas de pages /tags/ pour l'instant (réa
   # Calendrier externe (Calendly, Google…) — vide = calendrier intégré
   calendrierExterne = ""
 
+  # Serveur Supabase (comptes clients, commandes, rendez-vous, emails) — voir docs/MISE-EN-SERVICE.md
+  # Vides = le site fonctionne sans serveur (compte par appareil, emails via FormSubmit).
+  supabaseUrl = ""                     # ex. "https://abcdefgh.supabase.co"
+  supabaseCle = ""                     # clé PUBLIQUE « anon » / « publishable » (jamais la clé service_role)
+
   # Code d'accès de l'équipe pour la génération de facture (⚠ visible dans le JS public : ne protège pas des personnes déterminées)
   codeInterne = "EDENEL2026"
 

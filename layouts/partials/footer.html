@@ -26,7 +26,7 @@
       <div>
         <h3>Votre compte &amp; légal</h3>
         <ul>
-          <li><a href="#" onclick="ouvrirCompte();return false">Espace client</a></li>
+          <li><a href="#" class="lien-compte" onclick="ouvrirCompte();return false">Espace client</a></li>
           <li><a href="#" onclick="ouvrirValidation();return false">Bon de réception &amp; Facture</a></li>
           {{ with site.GetPage "/cgv" }}<li><a href="{{ .RelPermalink }}">Conditions Générales de Vente</a></li>{{ end }}
           {{ with site.GetPage "/mentions-legales" }}<li><a href="{{ .RelPermalink }}">Mentions légales &amp; Confidentialité</a></li>{{ end }}

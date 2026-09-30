@@ -74,6 +74,100 @@ var CODE_INTERNE = {{ site.Params.codeInterne | jsonify | safeJS }};
 var RDV_CRENEAUX = ["08:00", "09:30", "11:00", "14:00", "15:30", "17:00", "18:30"];
 var ANNULATION = "Conditions d'annulation de commande : annulation gratuite jusqu'à 10 jours avant la date d'intervention ; de 9 à 5 jours avant : pénalité d'annulation de 15 % du montant total TTC de la commande ; à moins de 5 jours : pénalité de 30 % du montant total TTC ; à 1 jour de la date d'intervention : commande non remboursable.";
 
+/* ====== SERVEUR (Supabase) — vide = fonctionnement sans serveur ====== */
+var SUPA_URL = {{ site.Params.supabaseUrl | default "" | strings.TrimSuffix "/" | jsonify | safeJS }};
+var SUPA_CLE = {{ site.Params.supabaseCle | default "" | jsonify | safeJS }};
+var BACKEND = !!(SUPA_URL && SUPA_CLE);
+var SESSION_KEY = "edenel_session";
+var PROFIL = null;          /* profil du client connecté (mode serveur) */
+var CMDS_SERVEUR = [];      /* ses commandes (mode serveur) */
+
+function erreurApi(r, d){
+  var e = new Error((d && (d.erreur || d.msg || d.message || d.error_description)) || ("Erreur " + r.status));
+  e.statut = r.status; return e;
+}
+function appelJson(url, opts){
+  return fetch(url, opts).then(function(r){
+    return r.text().then(function(t){
+      var d = null; try{ d = t ? JSON.parse(t) : null; }catch(e){}
+      if(!r.ok) throw erreurApi(r, d);
+      return d;
+    });
+  });
+}
+function sessionCourante(){ return lireJSON(SESSION_KEY); }
+function memoriserSession(d){
+  if(!d || !d.access_token) return null;
+  var s = {access_token: d.access_token, refresh_token: d.refresh_token, expires_at: d.expires_at || (Math.floor(Date.now() / 1000) + (d.expires_in || 3600)), user: d.user || (sessionCourante() || {}).user};
+  ecrireJSON(SESSION_KEY, s); return s;
+}
+function oublierSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} PROFIL = null; CMDS_SERVEUR = []; }
+function appelAuth(chemin, corps){
+  return appelJson(SUPA_URL + "/auth/v1/" + chemin, {method: "POST", headers: {"apikey": SUPA_CLE, "Content-Type": "application/json"}, body: JSON.stringify(corps)});
+}
+/* Jeton d'accès valide (rafraîchi si besoin) ou null si déconnecté */
+var rafraichissement = null;
+function jetonValide(){
+  var s = sessionCourante();
+  if(!s) return Promise.resolve(null);
+  if(s.expires_at * 1000 - 60000 > Date.now()) return Promise.resolve(s.access_token);
+  if(!rafraichissement){
+    rafraichissement = appelAuth("token?grant_type=refresh_token", {refresh_token: s.refresh_token})
+      .then(function(d){ return memoriserSession(d).access_token; })
+      .catch(function(e){ if(e.statut && e.statut < 500) oublierSession(); return null; })
+      .then(function(t){ rafraichissement = null; return t; });
+  }
+  return rafraichissement;
+}
+function entetes(jeton){
+  var h = {"apikey": SUPA_CLE, "Content-Type": "application/json"};
+  if(jeton) h.Authorization = "Bearer " + jeton;
+  return h;
+}
+/* Base de données (PostgREST) avec la session du client */
+function appelBase(chemin, opts){
+  opts = opts || {};
+  return jetonValide().then(function(j){
+    var h = entetes(j); if(opts.prefer) h.Prefer = opts.prefer;
+    return appelJson(SUPA_URL + "/rest/v1/" + chemin, {method: opts.method || "GET", headers: h, body: opts.corps ? JSON.stringify(opts.corps) : undefined});
+  });
+}
+function rpc(nom, args){ return appelBase("rpc/" + nom, {method: "POST", corps: args || {}}); }
+/* Fonctions serveur (supabase/functions) */
+function appelFonction(nom, corps, methode, requete){
+  return jetonValide().then(function(j){
+    return appelJson(SUPA_URL + "/functions/v1/" + nom + (requete || ""), {method: methode || "POST", headers: entetes(j), body: corps ? JSON.stringify(corps) : undefined});
+  });
+}
+/* Profil courant : serveur si connecté, sinon compte local de l'appareil */
+function compteCourant(){
+  if(BACKEND) return PROFIL;
+  return lireJSON(COMPTE_KEY);
+}
+/* Commandes du serveur au format utilisé par le site */
+function commandeVersLocal(c){
+  return {
+    id: c.id, dateCmd: (c.created_at || "").slice(0, 10), prestations: (c.lignes || []).map(function(l){ return l.titre; }).join(" + "),
+    adresse: c.adresse || "", dateInt: c.date_intervention, ht: Number(c.ht), ttc: Number(c.ttc), heurePlan: c.heure_planifiee || "",
+    dateBR: c.date_br, statutP: {recue: "Reçue", planifiee: "Planifiée", en_cours: "En cours", terminee: "Terminée", annulee: "Annulée"}[c.statut] || "",
+    statutF: {en_attente: "En attente", emise: "Émise", payee: "Payée"}[c.statut_facture] || "En attente",
+    trajets: c.statut === "annulee" ? [] : (c.trajets || []), numClient: c.numero_client, annulee: c.statut === "annulee"
+  };
+}
+function chargerEspace(){
+  var s = sessionCourante();
+  if(!BACKEND || !s) return Promise.resolve(null);
+  return Promise.all([
+    appelBase("profils?select=*&id=eq." + encodeURIComponent(s.user.id)),
+    appelBase("commandes?select=*&order=created_at.desc")
+  ]).then(function(r){
+    var p = r[0] && r[0][0];
+    PROFIL = p ? {nom: p.nom, email: s.user.email, tel: p.tel || "", numero: p.numero_client} : null;
+    CMDS_SERVEUR = (r[1] || []).map(commandeVersLocal);
+    return PROFIL;
+  }).catch(function(e){ if(e.statut === 401) oublierSession(); return null; });
+}
+
 var formule = "public";
 var panier = [];
 var univers = "menage", modeBureaux = "ponctuel";
@@ -309,7 +403,7 @@ function ouvrirCommande(simu, u){
     : "Composez votre prestation : les montants HT se calculent automatiquement, la TVA de 20 % est ajoutée au total.";
   initCommande();
   /* Déverrouillage automatique du Tarif Fidélité : 4 commandes ou 400 € TTC cumulés */
-  var cpt = lireJSON(COMPTE_KEY), cmds = lireCmds();
+  var cpt = compteCourant(), cmds = cmdsActives();
   var cumul = cmds.reduce(function(s, x){ return s + x.ttc; }, 0);
   if(cpt && cpt.numero && (cmds.length >= 4 || cumul >= 400) && !el("fid-num").value){
     el("fid-num").value = cpt.numero;
@@ -323,15 +417,16 @@ function fermerPanier(){ fermer("modal-panier"); }
 var derniereCommande = null;
 function ouvrirPaiement(){
   if(panier.length === 0){ el("liste-panier").innerHTML = '<p class="panier-vide">⚠ Ajoutez au moins une prestation avant de commander.</p>'; return; }
-  if(!lireJSON(COMPTE_KEY)){
-    el("liste-panier").innerHTML = '<p class="panier-vide">⚠ Pour passer commande (et cumuler vos commandes vers le Tarif Fidélité −8 %), créez d\'abord votre compte dans l\'Espace client — il s\'ouvre à l\'instant.</p>';
+  if(!compteCourant()){
+    note("pan-note", BACKEND ? "⚠ Pour passer commande, connectez-vous à votre Espace client (un code vous est envoyé par email) — il s'ouvre à l'instant. Votre panier est conservé."
+      : "⚠ Pour passer commande (et cumuler vos commandes vers le Tarif Fidélité −8 %), créez d'abord votre compte dans l'Espace client — il s'ouvre à l'instant.", ROUGE);
     ouvrirCompte(); return;
   }
   if(!telNational(el("pan-tel").value)){
     note("pan-note", "⚠ Téléphone mobile obligatoire pour commander : choisissez l'indicatif pays puis saisissez votre numéro commençant par 0 (ex. : 0612345678).", ROUGE); return;
   }
   derniereCommande = preparerCommande();   /* enregistrée dans l'historique seulement une fois transmise */
-  el("paiement-montant").textContent = "Commande " + derniereCommande.id + " — total " + eur(derniereCommande.ttc) + " TTC";
+  el("paiement-montant").textContent = BACKEND ? "Total de votre commande : " + eur(derniereCommande.ttc) + " TTC" : "Commande " + derniereCommande.id + " — total " + eur(derniereCommande.ttc) + " TTC";
   el("paiement-choix").hidden = false; el("paiement-succes").hidden = true;
   var bc = el("btn-confirmer"); if(bc) bc.disabled = false;
   note("note-paiement", "", "");
@@ -340,7 +435,7 @@ function ouvrirPaiement(){
 function confirmerCommande(){
   var rec = derniereCommande;
   if(!rec || panier.length === 0){ note("note-paiement", "⚠ Aucune commande en cours.", ROUGE); return; }
-  var compte = lireJSON(COMPTE_KEY) || {};
+  var compte = compteCourant() || {};
   var tries = panier.slice().sort(function(a, b){ return (a.date || "") < (b.date || "") ? -1 : 1; });
   var premier = tries[0];
   var heure = premier.heure || "09:00";
@@ -365,6 +460,21 @@ function confirmerCommande(){
   }
   note("note-paiement", "Transmission de votre commande…", GRIS);
   var bc = el("btn-confirmer"); if(bc) bc.disabled = true;
+  if(BACKEND){
+    appelFonction("commande", {lignes: panier, tel: rec.tel}).then(function(rep){
+      Object.assign(rec, commandeVersLocal(rep.commande));
+      evClient.uid = rec.id;
+      evClient.details = "Commande " + rec.id + "\n" + detailsTxt + "\nTotal : " + eur(rec.ttc) + " TTC\nL'heure exacte vous est confirmée par EDENEL.";
+      succes(rep.email_envoye
+        ? "✓ Commande " + rec.id + " enregistrée. Un récapitulatif vient de vous être envoyé par email ; nous vous confirmons l'heure exacte d'intervention. Enregistrez-la dès maintenant :"
+        : "✓ Commande " + rec.id + " enregistrée (l'email de récapitulatif n'a pas pu partir : retrouvez-la dans votre Espace client). Enregistrez l'intervention :");
+    }).catch(function(e){
+      if(bc) bc.disabled = false;
+      if(e.statut && e.statut < 500){ note("note-paiement", "⚠ " + e.message, ROUGE); return; }
+      echecCommande();
+    });
+    return;
+  }
   envoyerFormulaire({
     _subject: "COMMANDE " + rec.id + " — " + (compte.nom || "") + " — " + eur(rec.ttc) + " TTC — le " + frDate(premier.date),
     email: compte.email,
@@ -377,15 +487,15 @@ function confirmerCommande(){
     "AJOUTER À L'AGENDA EDENEL (1 clic)": lienSociete
   }).then(function(){
     succes("✓ Commande transmise. Un récapitulatif vient de vous être envoyé par email ; nous vous confirmons l'heure exacte d'intervention. Enregistrez-la dès maintenant :");
-  }).catch(function(){
-    if(bc) bc.disabled = false;
+  }).catch(function(){ if(bc) bc.disabled = false; echecCommande(); });
+  function echecCommande(){
     /* Échec : le panier est conservé, le client peut réessayer ou envoyer la commande par email */
     var mail = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("COMMANDE " + rec.id + " — " + (compte.nom || ""))
       + "&body=" + encodeURIComponent("Client : " + (compte.nom || "") + " — " + (compte.email || "") + " — " + rec.tel + "\nNuméro client : " + (rec.numClient || "—") + "\n\n" + detailsTxt + "\n\nTotal : " + eur(rec.ht) + " HT / " + eur(rec.ttc) + " TTC");
     var n = el("note-paiement");
     n.style.color = ROUGE;
     n.innerHTML = "⚠ La transmission automatique n'a pas abouti : votre commande n'est pas encore enregistrée (votre panier est conservé). Réessayez dans un instant, ou <a class=\"lien\" href=\"" + echapper(mail) + "\">envoyez-la-nous par email en un clic</a> (" + echapper(LEGAL.email) + ", référence " + echapper(rec.id) + ").";
-  });
+  }
 }
 function fermerPaiement(){ fermer("modal-paiement"); }
 function ouvrirValidation(){ ouvrir("modal-validation"); }
@@ -414,12 +524,39 @@ function ouvrirRdv(){
   } else {
     var t = new Date(); calAnnee = t.getFullYear(); calMois = t.getMonth();
     rdvDate = null; rdvHeure = null; dessinerCal();
+    if(BACKEND){
+      chargerCreneaux();
+      var p = compteCourant();
+      if(p){ if(!el("rdv-nom").value) el("rdv-nom").value = p.nom || ""; if(!el("rdv-email").value) el("rdv-email").value = p.email || ""; }
+    }
     el("rdv-interne").hidden = false; el("rdv-succes").hidden = true; el("creneaux").hidden = true;
     note("rdv-note", "Rendez-vous téléphonique ou sur site, 7j/7 — sans engagement.", "");
   }
   ouvrir("modal-rdv");
 }
-function changerMois(d){ calMois += d; if(calMois < 0){ calMois = 11; calAnnee--; } if(calMois > 11){ calMois = 0; calAnnee++; } dessinerCal(); }
+function changerMois(d){ calMois += d; if(calMois < 0){ calMois = 11; calAnnee--; } if(calMois > 11){ calMois = 0; calAnnee++; } dessinerCal(); if(BACKEND) chargerCreneaux(); }
+/* Mode serveur : créneaux réellement libres (agenda EDENEL + rendez-vous déjà pris) */
+var CRENEAUX = null, creneauxMois = "";
+function chargerCreneaux(){
+  var cle = calAnnee + "-" + calMois;
+  creneauxMois = cle; CRENEAUX = null; dessinerCal();
+  el("creneaux").hidden = true;
+  note("rdv-note", "Chargement des disponibilités…", GRIS);
+  var debut = isoLocal(new Date(calAnnee, calMois, 1)), fin = isoLocal(new Date(calAnnee, calMois + 1, 0));
+  appelFonction("rdv", null, "GET", "?debut=" + debut + "&fin=" + fin).then(function(d){
+    if(creneauxMois !== cle) return;
+    CRENEAUX = d.creneaux || {}; RDV_DUREE_MIN = d.duree || RDV_DUREE_MIN;
+    /* Mois en cours complet (ou presque fini) : on affiche directement le mois suivant */
+    var t = new Date();
+    if(!Object.keys(CRENEAUX).length && calAnnee === t.getFullYear() && calMois === t.getMonth()){ changerMois(1); return; }
+    dessinerCal();
+    note("rdv-note", Object.keys(CRENEAUX).length ? "Choisissez un jour disponible, puis un créneau. Rendez-vous téléphonique ou sur site — sans engagement." : "Aucun créneau libre ce mois-ci : essayez le mois suivant (›).", "");
+  }).catch(function(){
+    if(creneauxMois !== cle) return;
+    CRENEAUX = {}; dessinerCal();
+    note("rdv-note", "⚠ Les disponibilités n'ont pas pu être chargées — réessayez, ou écrivez-nous à " + LEGAL.email + ".", ROUGE);
+  });
+}
 function isoLocal(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function dessinerCal(){
   var mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -433,7 +570,7 @@ function dessinerCal(){
   for(var j = 1; j <= nb; j++){
     var d = new Date(calAnnee, calMois, j);
     var iso = isoLocal(d);
-    var passe = d < auj;
+    var passe = d < auj || (BACKEND && !(CRENEAUX && CRENEAUX[iso]));
     g += '<button type="button" class="cal-case' + (rdvDate === iso ? " choisi" : "") + '"' + (passe ? ' disabled' : '') + ' onclick="choisirJour(\'' + iso + '\')">' + j + '</button>';
   }
   el("cal-grille").innerHTML = g;
@@ -441,7 +578,8 @@ function dessinerCal(){
 function choisirJour(iso){
   rdvDate = iso; rdvHeure = null; dessinerCal();
   el("creneaux").hidden = false;
-  el("creneaux").innerHTML = RDV_CRENEAUX.map(function(h){
+  var heures = BACKEND ? ((CRENEAUX && CRENEAUX[iso]) || []) : RDV_CRENEAUX;
+  el("creneaux").innerHTML = heures.map(function(h){
     return '<button type="button" class="creneau" onclick="choisirHeure(this,\'' + h + '\')">' + h + '</button>';
   }).join("");
 }
@@ -471,6 +609,21 @@ function envoyerRdv(){
     boutonsAgenda("rdv-agenda", evClient, "rendez-vous-edenel-" + rdvDate + ".ics");
     el("rdv-interne").hidden = true; el("rdv-succes").hidden = false;
     note("rdv-succes-note", msg, couleur || VERT);
+  }
+  if(BACKEND){
+    var btn = document.querySelector('#rdv-interne .btn-vert'); if(btn) btn.disabled = true;
+    note("rdv-note", "Réservation en cours…", GRIS);
+    appelFonction("rdv", {date: rdvDate, heure: rdvHeure, nom: nom, email: rdvEmail, tel: tel, message: ((el("rdv-message") || {}).value || "").trim()}).then(function(rep){
+      evClient.duree = rep.duree || evClient.duree;
+      var confirme = rep.statut === "confirme";
+      el("rdv-succes").querySelector("h4").textContent = confirme ? "Rendez-vous confirmé" : "Demande de rendez-vous enregistrée";
+      succes((confirme ? "✓ Votre créneau est réservé." : "✓ Demande enregistrée : nous vous confirmons le créneau très vite.")
+        + (rep.email_envoye ? " Un email de confirmation vous a été envoyé à " + rdvEmail + "." : " (L'email de confirmation n'a pas pu partir : notez bien votre créneau.)") + " Ajoutez-le à votre agenda :");
+    }).catch(function(e){
+      if(e.statut === 409){ note("rdv-note", "⚠ " + e.message, ROUGE); rdvHeure = null; chargerCreneaux(); return; }
+      note("rdv-note", "⚠ " + (e.statut && e.statut < 500 ? e.message : "La réservation n'a pas abouti — réessayez, ou écrivez-nous à " + LEGAL.email + "."), ROUGE);
+    }).then(function(){ if(btn) btn.disabled = false; });
+    return;
   }
   if(estLocal()){
     location.href = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("Demande de RENDEZ-VOUS — " + LEGAL.marque)
@@ -510,6 +663,12 @@ function envoyerFormulaire(charge){
     }
     return rep;
   });
+}
+
+/* Envoi d'un message : fonction serveur « message » en mode serveur, FormSubmit sinon */
+function envoyerMessage(type, donnees, chargeFormSubmit){
+  if(BACKEND) return appelFonction("message", Object.assign({type: type}, donnees));
+  return envoyerFormulaire(chargeFormSubmit);
 }
 
 /* ====== AGENDA : « Ajouter à Google Agenda » (1 clic) et fichier .ics (Apple / Outlook) ====== */
@@ -748,7 +907,9 @@ function genererDevis(){
       location.href = "mailto:" + LEGAL.email + "?subject=" + encodeURIComponent("DEVIS " + num + " — " + client) + "&body=" + encodeURIComponent(texte);
       note("dv-note", "✓ Devis " + num + " téléchargé en PDF. Mode test local : votre messagerie s'est ouverte — en ligne, l'envoi par email est automatique.", VERT); return;
     }
-    envoyerFormulaire({_subject: "DEVIS " + num + " généré — " + client, email: email, _autoresponse: texte, "Client": client, "Devis": num, "Détail": resume, "Total": eur(ht) + " HT / " + eur(ttc) + " TTC"})
+    envoyerMessage("devis", {email: email, nom: prenom + " " + nom, client: client, numero: num, resume: resume + "\nFrais de déplacement : " + eur(depl) + " HT (" + nbDepl + " intervention(s))",
+      totaux: "Total HT : " + eur(ht) + " — TVA (20 %) : " + eur(tva) + " — TOTAL TTC : " + eur(ttc) + (htMensuel > 0 ? "\nContrats mensuels : " + eur(htMensuel) + " HT/mois (estimation à confirmer après visite)" : "")},
+      {_subject: "DEVIS " + num + " généré — " + client, email: email, _autoresponse: texte, "Client": client, "Devis": num, "Détail": resume, "Total": eur(ht) + " HT / " + eur(ttc) + " TTC"})
       .then(function(){ note("dv-note", "✓ Devis " + num + " téléchargé en PDF, et une copie vous a été envoyée à " + email + ".", VERT); })
       .catch(function(){ note("dv-note", "✓ Devis " + num + " téléchargé en PDF. ⚠ L'envoi par email n'a pas abouti — conservez le PDF ou contactez-nous : " + LEGAL.email, ROUGE); });
   }, function(){
@@ -772,6 +933,19 @@ function noteContact(id, texte, couleur){ note(id, texte, couleur) || note("note
   var fc = el("form-contact");
   if(!fc) return;
   fc.addEventListener("submit", function(ev){
+    if(BACKEND){
+      ev.preventDefault();
+      var dc = champsFormulaire(fc), suite = fc.querySelector('input[name="_next"]');
+      var nomC = (dc.champs.filter(function(c){ return c[0] === "Nom"; })[0] || [])[1] || "";
+      var btnC = fc.querySelector('button[type="submit"]'); if(btnC) btnC.disabled = true;
+      var honey = fc.querySelector('input[name="_honey"]');
+      appelFonction("message", {type: "contact", email: dc.email, nom: nomC, champs: dc.champs, _honey: honey ? honey.value : ""}).then(function(){
+        if(suite && suite.value) location.href = suite.value; else noteContact("ct-note", "✓ Message envoyé — réponse sous 24 h.", VERT);
+      }).catch(function(e){
+        noteContact("ct-note", "⚠ " + (e.statut && e.statut < 500 ? e.message : "L'envoi n'a pas abouti — écrivez-nous à " + LEGAL.email + "."), ROUGE);
+      }).then(function(){ if(btnC) btnC.disabled = false; });
+      return;
+    }
     if(!estLocal()) return;
     ev.preventDefault();
     var d = champsFormulaire(fc);
@@ -831,7 +1005,7 @@ function telechargerDevisContact(){
     doc.save("demande-devis-edenel-" + num + ".pdf");
     var msg = "✓ Votre demande de devis " + num + " a été téléchargée en PDF.";
     if(estLocal()){ note("ct-note", msg + " (Mode test local : pensez à nous l'envoyer par email.)", VERT); return; }
-    envoyerFormulaire({
+    envoyerMessage("demande-devis", {email: email, nom: nom, numero: num, tel: tel, prestation: presta, secteur: lieu, besoin: besoin}, {
       _subject: "Demande de devis " + num + " — " + (nom || email),
       email: email,
       _autoresponse: "Bonjour" + (nom ? " " + nom : "") + ",\n\nNous avons bien reçu votre demande de devis " + num + " (prestation : " + presta + "). Nous vous adressons un devis chiffré et personnalisé sous 24 h.\n\n" + LEGAL.marque + " — " + LEGAL.filiation + "\n" + LEGAL.email,
@@ -852,6 +1026,7 @@ function fermerFormContact(){
 
 /* ====== BON DE RÉCEPTION & FACTURATION ====== */
 function choisirVolet(v){
+  if(!el("ong-fact")) return;
   el("ong-br").classList.toggle("actif", v === "br");
   el("ong-fact").classList.toggle("actif", v === "fact");
   el("volet-br").hidden = v !== "br";
@@ -870,7 +1045,7 @@ function envoyerBR(){
     note("br-note", "✓ Mode test local : votre messagerie s'est ouverte avec le bon de réception pré-rempli — cliquez sur Envoyer.", VERT); return;
   }
   note("br-note", "Envoi en cours…", GRIS);
-  envoyerFormulaire({
+  envoyerMessage("bon-reception", {email: email, nom: nom, numero: num, date: dateStr, heure: el("br-heure").value, observations: el("br-comm").value.trim()}, {
     _subject: "BON DE RÉCEPTION — " + num, email: email,
     _autoresponse: "Bonjour " + nom + ",\n\nNous accusons réception de votre bon de réception pour la commande " + num + " (intervention du " + dateFr + "). Votre facture vous sera transmise après notre validation interne, au plus tôt 5 h après l'heure d'intervention planifiée.\n\n" + LEGAL.marque + " — " + LEGAL.filiation,
     "Bon de réception": corps
@@ -914,9 +1089,68 @@ var COMPTE_KEY = "edenel_compte", CMD_KEY = "edenel_commandes";
 var compteConnecte = false;
 function lireJSON(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
 function ecrireJSON(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
-function lireCmds(){ return lireJSON(CMD_KEY) || []; }
+function lireCmds(){ return BACKEND ? CMDS_SERVEUR : (lireJSON(CMD_KEY) || []); }
+function cmdsActives(){ return lireCmds().filter(function(r){ return !r.annulee; }); }
+
+/* ---------- Espace client en mode serveur : connexion par code email ---------- */
+function etapeConnexion(etape){
+  ["email", "code", "profil"].forEach(function(x){ el("cx-etape-" + x).hidden = x !== etape; });
+}
+function afficherEspaceServeur(){
+  el("zone-auth").hidden = true; el("zone-import").hidden = true;
+  if(PROFIL){ el("zone-connexion").hidden = true; el("zone-tableau").hidden = false; afficherTableau(); return; }
+  el("zone-connexion").hidden = false; el("zone-tableau").hidden = true;
+  var s = sessionCourante();
+  if(s){ etapeConnexion("profil"); if(!el("cx-nom").value && lireJSON(COMPTE_KEY)){ el("cx-nom").value = lireJSON(COMPTE_KEY).nom || ""; el("cx-numero").value = lireJSON(COMPTE_KEY).numero || ""; } }
+  else etapeConnexion(el("cx-etape-code").hidden ? "email" : "code");
+}
+function envoyerCodeConnexion(){
+  var email = el("cx-email").value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ note("cx-note", "⚠ Merci d'indiquer un email valide.", ROUGE); return; }
+  el("cx-btn-code").disabled = true; note("cx-note", "Envoi du code…", GRIS);
+  appelAuth("otp", {email: email, create_user: true}).then(function(){
+    etapeConnexion("code"); el("cx-code").value = ""; el("cx-code").focus();
+    note("cx-note", "✓ Code envoyé à " + email + " (pensez à regarder dans les spams). Il est valable 1 heure.", VERT);
+  }).catch(function(e){
+    note("cx-note", e.statut === 429 ? "⚠ Trop de demandes : patientez une minute avant de redemander un code." : "⚠ Le code n'a pas pu être envoyé — réessayez dans un instant.", ROUGE);
+  }).then(function(){ el("cx-btn-code").disabled = false; });
+}
+function changerEmailConnexion(){ etapeConnexion("email"); note("cx-note", ""); }
+function validerCodeConnexion(){
+  var email = el("cx-email").value.trim().toLowerCase(), code = el("cx-code").value.replace(/\s/g, "");
+  if(!/^\d{6,10}$/.test(code)){ note("cx-note", "⚠ Saisissez le code à 6 chiffres reçu par email.", ROUGE); return; }
+  el("cx-btn-valider").disabled = true; note("cx-note", "Vérification…", GRIS);
+  appelAuth("verify", {type: "email", email: email, token: code}).then(function(d){
+    memoriserSession(d);
+    return chargerEspace();
+  }).then(function(){
+    note("cx-note", "");
+    afficherEspaceServeur();
+    majEtatConnexion();
+  }).catch(function(){
+    note("cx-note", "⚠ Code incorrect ou expiré. Vérifiez-le ou demandez-en un nouveau.", ROUGE);
+  }).then(function(){ el("cx-btn-valider").disabled = false; });
+}
+function enregistrerProfil(){
+  var nom = el("cx-nom").value.trim(), tel = el("cx-tel").value.trim(), num = el("cx-numero").value.trim();
+  if(nom.length < 2){ note("cx-note", "⚠ Merci d'indiquer votre nom.", ROUGE); return; }
+  if(tel.replace(/\D/g, "").length < 9){ note("cx-note", "⚠ Merci d'indiquer votre téléphone mobile.", ROUGE); return; }
+  note("cx-note", "Enregistrement…", GRIS);
+  rpc("creer_profil", {p_nom: nom, p_tel: tel, p_numero: num || null}).then(function(){ return chargerEspace(); }).then(function(){
+    note("cx-note", ""); afficherEspaceServeur(); majEtatConnexion();
+  }).catch(function(e){ note("cx-note", "⚠ " + (e.message || "Enregistrement impossible."), ROUGE); });
+}
+function deconnexionServeur(){
+  jetonValide().then(function(j){ if(j) fetch(SUPA_URL + "/auth/v1/logout", {method: "POST", headers: entetes(j)}).catch(function(){}); });
+  oublierSession(); majEtatConnexion(); etapeConnexion("email"); afficherEspaceServeur();
+}
+/* Menu : « Espace client » devient « Mon compte » une fois connecté */
+function majEtatConnexion(){
+  document.querySelectorAll(".lien-compte").forEach(function(a){ a.textContent = compteCourant() ? "Mon compte" : "Espace client"; });
+}
 
 function ouvrirCompte(){
+  if(BACKEND){ afficherEspaceServeur(); ouvrir("modal-compte"); if(sessionCourante()) chargerEspace().then(afficherEspaceServeur); return; }
   var c = lireJSON(COMPTE_KEY);
   el("zone-import").hidden = true;
   if(el("zone-transfert")) el("zone-transfert").hidden = true;
@@ -1048,7 +1282,7 @@ function annulerImport(){
   importEnAttente = null;
   el("zone-import").hidden = true; el("zone-auth").hidden = false;
 }
-function seDeconnecter(){ compteConnecte = false; el("zone-tableau").hidden = true; el("zone-transfert").hidden = true; el("zone-auth").hidden = false; }
+function seDeconnecter(){ if(BACKEND){ deconnexionServeur(); return; } compteConnecte = false; el("zone-tableau").hidden = true; el("zone-transfert").hidden = true; el("zone-auth").hidden = false; }
 
 function preparerCommande(){
   if(panier.length === 0) return null;
@@ -1064,12 +1298,13 @@ function preparerCommande(){
     ht: ht, ttc: r2(ht * (1 + TVA)),
     heurePlan: "", tel: telComplet(),
     dateBR: null, statutP: "", statutF: "En attente",
-    numClient: (lireJSON(COMPTE_KEY) || {}).numero || "",
+    numClient: (compteCourant() || {}).numero || "",
     trajets: dp.cles
   };
   return rec;
 }
 function sauverCommande(rec){
+  if(BACKEND){ if(!CMDS_SERVEUR.some(function(r){ return r.id === rec.id; })) CMDS_SERVEUR.unshift(rec); return; }
   var l = lireCmds();
   if(!l.some(function(r){ return r.id === rec.id; })){ l.push(rec); ecrireJSON(CMD_KEY, l); }
 }
@@ -1092,11 +1327,15 @@ function majRecordBR(num, heure){
   if(t) ecrireJSON(CMD_KEY, l);
 }
 function afficherTableau(){
-  var c = lireJSON(COMPTE_KEY) || {nom: ""};
+  var c = compteCourant() || {nom: ""};
   el("tb-bonjour").textContent = "Bonjour " + c.nom + " — voici le récapitulatif de vos commandes :";
-  var lc = lireCmds();
-  var cumul = r2(lc.reduce(function(s, x){ return s + x.ttc; }, 0));
-  var eligible = lc.length >= 4 || cumul >= 400;
+  var lc = lireCmds(), actives = cmdsActives();
+  var cumul = r2(actives.reduce(function(s, x){ return s + x.ttc; }, 0));
+  var eligible = actives.length >= 4 || cumul >= 400;
+  if(BACKEND){
+    el("btn-transfert").hidden = true;
+    el("tb-note").textContent = "Vos commandes sont enregistrées sur votre compte : vous les retrouvez sur tous vos appareils. Les statuts sont mis à jour par EDENEL.";
+  }
   el("tb-infos").innerHTML = "<strong>Votre numéro client : " + echapper(c.numero || "—") + "</strong>"
     + " · Commandes : <strong>" + lc.length + "</strong>"
     + " · Montant cumulé TTC : <strong>" + eur(cumul) + "</strong>"
@@ -1107,6 +1346,13 @@ function afficherTableau(){
   if(lc.length === 0){ t.innerHTML = '<tr><td class="cmd-vide">Aucune commande enregistrée sur cet appareil pour le moment.</td></tr>'; return; }
   var optP = ["", "Planifiée", "En cours", "À corriger", "Terminée"];
   var optF = ["En attente", "Émise", "Payée"];
+  if(BACKEND){
+    t.innerHTML = "<tr><th>Réf.</th><th>Commandée le</th><th>Prestation(s)</th><th>Adresse du bien</th><th>Intervention</th><th>Heure confirmée</th><th>Total HT</th><th>Total TTC</th><th>Bon de réception</th><th>Statut</th><th>Facture</th></tr>"
+      + lc.map(function(r){
+        return "<tr><td><strong>" + echapper(r.id) + "</strong></td><td>" + frDate(r.dateCmd) + "</td><td>" + echapper(r.prestations) + "</td><td>" + echapper(r.adresse) + "</td><td>" + frDate(r.dateInt) + "</td><td>" + echapper(r.heurePlan || "à confirmer") + "</td><td>" + eur(r.ht) + "</td><td>" + eur(r.ttc) + "</td><td>" + (r.dateBR ? "validé le " + frDate(r.dateBR) : "à valider") + "</td><td>" + echapper(r.statutP) + "</td><td>" + echapper(r.statutF) + "</td></tr>";
+      }).join("");
+    return;
+  }
   t.innerHTML = "<tr><th>Réf.</th><th>Commandée le</th><th>Prestation(s)</th><th>Adresse du bien</th><th>Intervention</th><th>Heure planifiée</th><th>Total HT</th><th>Total TTC</th><th>Bon de réception</th><th>Statut prestation</th><th>Statut facture</th></tr>"
     + lc.map(function(r){
       var selP = '<select onchange="majStatut(\'' + r.id + '\',\'statutP\',this.value)">' + optP.map(function(o){
@@ -1118,7 +1364,7 @@ function afficherTableau(){
     }).join("");
 }
 function pdfHistorique(){
-  var c = lireJSON(COMPTE_KEY) || {nom: "", email: ""};
+  var c = compteCourant() || {nom: "", email: ""};
   var l = lireCmds();
   var totHT = r2(l.reduce(function(s, r){ return s + r.ht; }, 0));
   var totTTC = r2(l.reduce(function(s, r){ return s + r.ttc; }, 0));
@@ -1134,7 +1380,7 @@ function pdfHistorique(){
       {titre: "BR validé", largeur: 21}, {titre: "Statut", largeur: 20}, {titre: "Facture", largeur: 15}
     ], rows);
     y = pdfTotaux(doc, y, [["Cumul HT", eur(totHT)], ["Cumul TTC", eur(totTTC), true]]);
-    pdfEncadre(doc, y, "Information", "Récapitulatif généré localement depuis le navigateur du client — aucune donnée ni facture n'est stockée sur le site.");
+    pdfEncadre(doc, y, "Information", BACKEND ? "Récapitulatif de votre compte client EDENEL au " + new Date().toLocaleDateString("fr-FR") + "." : "Récapitulatif généré localement depuis le navigateur du client — aucune donnée ni facture n'est stockée sur le site.");
     doc.save("historique-edenel-" + new Date().toISOString().slice(0, 10) + ".pdf");
   }, function(){ alert("Le générateur PDF n'a pas pu se charger. Réessayez dans un instant."); }, {orientation: "landscape", marge: 12})
   .then(function(){ if(btn){ btn.disabled = false; btn.textContent = "Télécharger l'historique (PDF)"; } });
@@ -1391,4 +1637,11 @@ document.querySelectorAll("nav.liens a").forEach(function(a){ a.addEventListener
 
 /* Au chargement : panier conservé d'une page à l'autre, import d'un compte depuis un lien de transfert */
 chargerPanier(); majPanier();
-detecterImport();
+if(BACKEND){
+  /* La facturation se fait depuis la page /admin/ (accès protégé) */
+  ["ong-fact", "volet-fact"].forEach(function(i){ if(el(i)) el(i).remove(); });
+  if(el("ong-br")) el("ong-br").style.flex = "1";
+  chargerEspace().then(majEtatConnexion);
+} else {
+  detecterImport();
+}

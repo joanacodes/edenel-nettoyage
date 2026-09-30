@@ -1,6 +1,7 @@
 // Envoi des emails via Resend (https://resend.com), au nom de contact@edenelnettoyage.fr.
 
 const CLE = Deno.env.get("RESEND_API_KEY") ?? "";
+const API_RESEND = Deno.env.get("RESEND_API_URL") ?? "https://api.resend.com";
 export const EXPEDITEUR = Deno.env.get("EMAIL_FROM") ?? "EDENEL Nettoyage <contact@edenelnettoyage.fr>";
 export const EMAIL_EDENEL = Deno.env.get("EMAIL_EDENEL") ?? "contact@edenelnettoyage.fr";
 export const SITE_URL = (Deno.env.get("SITE_URL") ?? "https://edenelnettoyage.fr").replace(/\/$/, "");
@@ -54,7 +55,7 @@ export async function envoyerEmail(opts: {
   pj?: PieceJointe[];
 }): Promise<void> {
   if (!CLE) throw new Error("RESEND_API_KEY manquante");
-  const r = await fetch("https://api.resend.com/emails", {
+  const r = await fetch(API_RESEND + "/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" },
     body: JSON.stringify({

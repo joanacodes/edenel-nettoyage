@@ -1,0 +1,97 @@
+{{ define "main" }}
+<div class="page-entete">
+  <div class="wrap">
+    <h1>Espace EDENEL</h1>
+    <p class="chapo">Rendez-vous, commandes, agenda et factures — accès réservé à l'équipe.</p>
+  </div>
+</div>
+<div class="page-corps">
+  <div class="wrap adm">
+    {{ if not (and site.Params.supabaseUrl site.Params.supabaseCle) }}
+    <div class="bc-info">Le serveur n'est pas encore configuré : renseignez <code>supabaseUrl</code> et <code>supabaseCle</code> dans <code>hugo.toml</code> (voir docs/MISE-EN-SERVICE.md).</div>
+    {{ else }}
+    <div id="adm-connexion" class="contact-form-carte">
+      <h2>Connexion</h2>
+      <p class="contact-form-sous">Saisissez votre email d'administrateur : un code à 6 chiffres vous est envoyé.</p>
+      <div class="bc-ligne">
+        <div class="champ"><label for="adm-email">Email</label><input id="adm-email" type="email" autocomplete="email"></div>
+        <div class="champ" id="adm-bloc-code" hidden><label for="adm-code">Code reçu</label><input id="adm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10"></div>
+      </div>
+      <div class="modal-actions quatre">
+        <button class="btn btn-vert" type="button" id="adm-btn-code" onclick="admEnvoyerCode()">Recevoir mon code</button>
+        <button class="btn btn-plein" type="button" id="adm-btn-valider" hidden onclick="admValiderCode()">Me connecter</button>
+      </div>
+      <p class="modal-note" id="adm-note"></p>
+    </div>
+
+    <div id="adm-app" hidden>
+      <div class="adm-barre">
+        <span id="adm-qui"></span>
+        <button class="btn btn-ligne" type="button" onclick="admDeconnexion()">Me déconnecter</button>
+      </div>
+      <div class="bc-onglets univers" role="tablist">
+        <button class="bc-onglet actif" type="button" id="adm-o-rdv" onclick="admOnglet('rdv')">Rendez-vous</button>
+        <button class="bc-onglet" type="button" id="adm-o-cmd" onclick="admOnglet('cmd')">Commandes</button>
+        <button class="bc-onglet" type="button" id="adm-o-agenda" onclick="admOnglet('agenda')">Agenda &amp; horaires</button>
+        <button class="bc-onglet" type="button" id="adm-o-etat" onclick="admOnglet('etat')">État des services</button>
+      </div>
+      <p class="modal-note" id="adm-msg"></p>
+
+      <section id="adm-p-rdv">
+        <div class="adm-filtres">
+          <label class="case"><input type="checkbox" id="adm-rdv-passes" onchange="admChargerRdv()"> <span>Afficher aussi les 30 derniers jours et les annulés</span></label>
+        </div>
+        <div class="cmd-defile"><table class="cmd" id="adm-t-rdv"></table></div>
+      </section>
+
+      <section id="adm-p-cmd" hidden>
+        <div class="adm-filtres">
+          <select id="adm-cmd-filtre" onchange="admChargerCmd()">
+            <option value="actives">À traiter et à venir</option>
+            <option value="toutes">Toutes les commandes</option>
+            <option value="factures">À facturer (bon de réception validé)</option>
+          </select>
+        </div>
+        <div id="adm-l-cmd"></div>
+      </section>
+
+      <section id="adm-p-agenda" hidden>
+        <h2>Créneaux de rendez-vous par jour</h2>
+        <p class="contact-form-sous">Heures de début séparées par des virgules (ex. : 09:00, 10:30, 14:00). Laissez vide pour un jour sans rendez-vous. Vos occupations Google Agenda bloquent aussi les créneaux si Google est connecté.</p>
+        <div class="bc-ligne" id="adm-regles"></div>
+        <div class="modal-actions"><button class="btn btn-vert" type="button" onclick="admSauverRegles()">Enregistrer les créneaux</button></div>
+
+        <h2 class="espace-haut">Jours fermés</h2>
+        <div class="bc-ligne">
+          <div class="champ"><label for="adm-f-date">Date</label><input id="adm-f-date" type="date"></div>
+          <div class="champ"><label for="adm-f-motif">Motif (interne)</label><input id="adm-f-motif" type="text" placeholder="Ex. : congés"></div>
+        </div>
+        <div class="modal-actions"><button class="btn btn-plein" type="button" onclick="admAjouterFermeture()">Fermer ce jour</button></div>
+        <ul class="adm-fermetures" id="adm-fermetures"></ul>
+
+        <h2 class="espace-haut">Réglages</h2>
+        <div class="bc-ligne">
+          <div class="champ"><label for="adm-r-duree">Durée d'un rendez-vous (min)</label><input id="adm-r-duree" type="number" min="10" max="240" step="5"></div>
+          <div class="champ"><label for="adm-r-delai">Délai minimum avant un RDV (heures)</label><input id="adm-r-delai" type="number" min="0" max="336"></div>
+          <div class="champ"><label for="adm-r-horizon">Réservation possible jusqu'à (jours)</label><input id="adm-r-horizon" type="number" min="7" max="365"></div>
+          <div class="champ large"><label class="case"><input type="checkbox" id="adm-r-auto"> <span><strong>Confirmation automatique</strong> — décochez pour valider vous-même chaque rendez-vous.</span></label></div>
+        </div>
+        <div class="modal-actions"><button class="btn btn-vert" type="button" onclick="admSauverReglages()">Enregistrer les réglages</button></div>
+      </section>
+
+      <section id="adm-p-etat" hidden>
+        <div class="bc-info" id="adm-etat">…</div>
+        <div class="modal-actions quatre">
+          <button class="btn btn-plein" type="button" onclick="admEtat()">Vérifier à nouveau</button>
+          <button class="btn btn-ligne" type="button" onclick="admTestEmail()">M'envoyer un email de test</button>
+        </div>
+      </section>
+    </div>
+    {{ end }}
+  </div>
+</div>
+{{- with resources.Get "js/admin.js" }}
+  {{- $js := . | minify | fingerprint "sha256" }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" crossorigin="anonymous" defer></script>
+{{- end }}
+{{ end }}
